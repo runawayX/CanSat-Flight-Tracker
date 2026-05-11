@@ -1,0 +1,362 @@
+using C5;
+using CesiumForUnity;
+using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
+using System.Text;
+using TMPro;
+using Unity.Mathematics;
+using UnityEditor;
+using UnityEngine;
+using UnityEngine.Events;
+using UnityEngine.UI;
+using UnityEngine.UIElements;
+
+using static CansatDataHelpers;
+
+public readonly struct GeoTransform
+{
+    public readonly double3 lonLatAlt;
+    public readonly Quaternion localRotation;
+
+    public static GeoTransform identity = new GeoTransform(double3.zero, Quaternion.identity);
+
+    public GeoTransform(double3 lonLatAlt, Quaternion localRotation)
+    {
+        this.lonLatAlt = lonLatAlt;
+        this.localRotation = localRotation;
+    }
+}
+
+public class DataProcessor : MonoBehaviour
+{
+    [Header("Components")]
+    public DataConfiguration _config;
+    //[SerializeField] private CesiumGeoreference _map;
+
+    [Header("Events")]
+    public UnityEvent<bool> _onNewPacket;
+    public UnityEvent _onBadPacket;
+
+    public UnityEvent _onCompleteDatabase;
+    public UnityEvent _onClearDatabase;
+
+    [Header("Editor")]
+    public bool _logAddPacket = false;
+    public bool _logSerialRaw = false;
+
+    // Internal
+    public int _startTimestamp { get; private set; } = 0;
+    private TreeDictionary<int, DataKeyframe> _dataKeys;
+    public bool _hasData { get; private set; } = false;
+
+    public DataReceiver<bool> _recordedDataFeed { get; private set; }
+    public DataReceiver<SerialPortHandler.StatusCode> _liveDataFeed { get; private set; }
+
+    private void Awake()
+    {
+        _dataKeys = new TreeDictionary<int, DataKeyframe>();
+    }
+
+    private void Start()
+    {
+    }
+
+    private void Update()
+    {
+        if (_liveDataFeed != null)
+        {
+            _liveDataFeed.Read();
+            _config._serialStatus = _liveDataFeed.Status();
+        }
+    }
+
+    private void OnDisable()
+    {
+        StopSerial();
+    }
+
+    #region Actions
+    public void ReadRecording()
+    {
+        ClearData();
+
+        _recordedDataFeed = new JsonFileDataReader(this, _config._path);
+        _recordedDataFeed.Begin();
+    }
+
+    public void StartSerial()
+    {
+        if (_liveDataFeed == null)
+        {
+            _liveDataFeed = new SerialPortDataReceiver(this, _logSerialRaw);
+            Debug.Log("Created new Serial Port Data Receiver.");
+        }
+
+        _liveDataFeed.Begin();
+        Debug.Log($"External serial port is {_liveDataFeed.Status()}");
+    }
+
+    public void StopSerial()
+    {
+        _liveDataFeed?.End();
+        _liveDataFeed = null;
+
+        _config._serialStatus = SerialPortHandler.StatusCode.DISABLED;
+    }
+
+    public void CompleteData()
+    {
+        _onCompleteDatabase.Invoke();
+    }
+
+    public void ExportData()
+    {
+        if (!_hasData)
+        {
+            Debug.Log("No data to export.");
+            return;
+        }
+
+        DataExporter<DataKeyframe> export = new JsonFileDataExporter(_dataKeys, _config._exportPath);
+
+        try
+        {
+            export.Export();
+            Debug.Log($"Successfully exported data to {_config._exportPath}");
+        } catch (Exception ex) {
+            Debug.LogWarning($"Failed to export data - {ex.ToString()}");
+        }
+    }
+
+    public void ClearData()
+    {
+        Debug.Log("Clearing data...");
+
+        _hasData = false;
+        _dataKeys.Clear();
+
+        _onClearDatabase.Invoke();
+    }
+    #endregion
+
+    #region Data Processing
+    public void ProcessDatakey(DataKeyframe p, bool incremental)
+    {
+        if (_logAddPacket) Debug.Log($"Processing {p}...");
+
+        if (_dataKeys.Keys.Contains(p.t))
+        {
+            Debug.LogWarning($"Tried to add duplicate keyframe {p}");
+            return;
+        }
+
+        _dataKeys.Add(p.t, p);
+        _startTimestamp = _dataKeys.First().Key;
+
+        _hasData = true;
+        _onNewPacket.Invoke(incremental);
+    }
+
+    public void WarnBadDatakey()
+    {
+        _onBadPacket.Invoke();
+    }
+    #endregion
+
+    #region Accessing & Evaluation
+    /// <summary>
+    /// Gives the total time of data tracking
+    /// </summary>
+    /// <returns></returns>
+    public int TotalTime()
+    {
+        if (_hasData) return _dataKeys.Last().Key - _startTimestamp;
+        else return 0;
+    }
+
+    public bool IsListeningSerial()
+    {
+        if (_liveDataFeed != null) return (_liveDataFeed as SerialPortDataReceiver).Status() == SerialPortHandler.StatusCode.RUNNING; // unsafe
+        else return false;
+    }
+
+    /// <summary>
+    /// Gives interpolated GPS coordinates and altitude at desired time-point
+    /// </summary>
+    /// <param name="time_ms">Time-point (in milliseconds) at which to evaluate</param>
+    /// <param name="evaluated">Longitude, Latitude, Altitude</param>
+    /// <returns>Whether the evaluation succeeded (false if no data)</returns>
+    public bool EvaluateLocationGPS(int time_ms, out double3 evaluated)
+    {
+        if (!_hasData)
+        {
+            evaluated = double3.zero;
+            return false;
+        }
+
+        time_ms += _startTimestamp;
+        int clamp_time_ms = Math.Clamp(time_ms, _dataKeys.First().Key, _dataKeys.Last().Key);
+
+        var sK = _dataKeys.WeakPredecessor(clamp_time_ms).Value;
+        var eK = _dataKeys.WeakSuccessor(clamp_time_ms).Value;
+
+        if (sK.t == eK.t)
+        {
+            evaluated = new double3(sK.lon, sK.lat, sK.alt);
+            return true;
+        }
+
+        float lerpRatio = (float) (time_ms - sK.t) / (eK.t - sK.t);
+
+        //Debug.Log($"Lerp {lerpRatio} ({time_ms}ms)\nFrom {sK.t}ms to {eK.t}ms");
+
+        evaluated = new double3(math.lerp(sK.lon, eK.lon, lerpRatio),
+            math.lerp(sK.lat, eK.lat, lerpRatio),
+            math.lerp(sK.alt, eK.alt, lerpRatio));
+
+        return true;
+    }
+
+    /// <summary>
+    /// Gives interpolated Unity-based rotation vector at desired time-point
+    /// </summary>
+    /// <param name="time_ms">Time-point (in milliseconds) at which to evaluate</param>
+    /// <param name="evaluated">Composited Pitch, Yaw, Roll</param>
+    /// <returns>Whether the evaluation succeeded (false if no data)</returns>
+    public bool EvaluateRotation(int time_ms, out Quaternion evaluated)
+    {
+        if (!_hasData)
+        {
+            evaluated = Quaternion.identity;
+            return false;
+        }
+
+        time_ms += _startTimestamp;
+        int clamp_time_ms = Math.Clamp(time_ms, _dataKeys.First().Key, _dataKeys.Last().Key);
+
+        var sK = _dataKeys.WeakPredecessor(clamp_time_ms).Value;
+        var eK = _dataKeys.WeakSuccessor(clamp_time_ms).Value;
+
+        if (sK.t == eK.t)
+        {
+            evaluated = Quaternion.AngleAxis(sK.pitch, Vector3.right) * Quaternion.AngleAxis(sK.hdg, Vector3.up) * Quaternion.AngleAxis(sK.roll, Vector3.forward); ;
+            return true;
+        }
+
+        float lerpRatio = (float) (time_ms - sK.t) / (eK.t - sK.t);
+        Vector3 ir = Vector3.Lerp(new Vector3(sK.pitch, sK.hdg, sK.roll), new Vector3(eK.pitch, eK.hdg, eK.roll), lerpRatio);
+
+        evaluated = Quaternion.AngleAxis(ir.x, Vector3.right) * Quaternion.AngleAxis(ir.y, Vector3.up) * Quaternion.AngleAxis(ir.z, Vector3.forward);
+        return true;
+    }
+
+    /// <summary>
+    /// Gives interpolated Unity-based rotation vector at desired time-point
+    /// </summary>
+    /// <param name="time_ms">Time-point (in milliseconds) at which to evaluate</param>
+    /// <param name="evaluated">Composited Pitch, Yaw, Roll</param>
+    /// <returns>Whether the evaluation succeeded (false if no data)</returns>
+    public bool EvaluateTransform(int time_ms, out GeoTransform evaluated)
+    {
+        if (!_hasData)
+        {
+            evaluated = GeoTransform.identity;
+            return false;
+        }
+
+        time_ms += _startTimestamp;
+        int clamp_time_ms = Math.Clamp(time_ms, _dataKeys.First().Key, _dataKeys.Last().Key);
+
+        var sK = _dataKeys.WeakPredecessor(clamp_time_ms).Value;
+        var eK = _dataKeys.WeakSuccessor(clamp_time_ms).Value;
+
+        double3 p;
+        Quaternion r;
+
+        if (sK.t == eK.t)
+        {
+            p = new double3(sK.lon, sK.lat, sK.alt);
+            r = Quaternion.AngleAxis(sK.pitch, Vector3.right) * Quaternion.AngleAxis(sK.hdg, Vector3.up) * Quaternion.AngleAxis(sK.roll, Vector3.forward); ;
+
+            evaluated = new GeoTransform(p, r);
+            return true;
+        }
+
+        float lerpRatio = (float) (time_ms - sK.t) / (eK.t - sK.t);
+
+        p = new double3(math.lerp(sK.lon, eK.lon, lerpRatio), math.lerp(sK.lat, eK.lat, lerpRatio), math.lerp(sK.alt, eK.alt, lerpRatio));
+        Vector3 ir = Vector3.Lerp(new Vector3(sK.pitch, sK.hdg, sK.roll), new Vector3(eK.pitch, eK.hdg, eK.roll), lerpRatio);
+        r = Quaternion.AngleAxis(ir.x, Vector3.right) * Quaternion.AngleAxis(ir.y, Vector3.up) * Quaternion.AngleAxis(ir.z, Vector3.forward);
+
+        evaluated = new GeoTransform(p, r);
+        return true;
+    }
+
+    public Vector3[] GetTravelPathUnitySpaceRelative(CesiumGeoreference referenceGlobe, Vector3 referencePosition)
+    {
+        if (!_hasData) return new Vector3[0];
+
+        Vector3[] result = new Vector3[_dataKeys.Count];
+
+        int r = 0;
+        foreach (DataKeyframe k in _dataKeys.Values)
+        {
+            double3 unityPos = referenceGlobe.TransformEarthCenteredEarthFixedPositionToUnity(
+                CesiumWgs84Ellipsoid.LongitudeLatitudeHeightToEarthCenteredEarthFixed(new double3(k.lon, k.lat, k.alt)));
+
+            result[r] = new Vector3((float) unityPos.x, (float) unityPos.y, (float) unityPos.z) - referencePosition;
+            ++r;
+        }
+
+        return result;
+    }
+
+    public Vector3 GetLastPositionUnitySpaceRelative(CesiumGeoreference referenceGlobe, Vector3 referencePosition)
+    {
+        if (!_hasData) return Vector3.zero;
+
+        DataKeyframe k = _dataKeys.Values.Last();
+        double3 unityPos = referenceGlobe.TransformEarthCenteredEarthFixedPositionToUnity(
+                CesiumWgs84Ellipsoid.LongitudeLatitudeHeightToEarthCenteredEarthFixed(new double3(k.lon, k.lat, k.alt)));
+
+        return new Vector3((float) unityPos.x, (float) unityPos.y, (float) unityPos.z) - referencePosition;
+    }
+    #endregion
+}
+
+public static class CansatDataHelpers
+{
+    public static int LerpInt(int start, int end, float ratio)
+    {
+        return start + (int) Math.Round((end - start) * ratio);
+    }
+
+    public static double3 LerpDouble3(double3 start, double3 end, float ratio)
+    {
+        return start + (end - start) * ratio;
+    }
+
+    public static void TranslateGPS(ref CesiumGlobeAnchor obj, Vector2 v)
+    {
+        double longitudeRad = math.radians(obj.longitudeLatitudeHeight.x);
+        double latitudeRad = math.radians(obj.longitudeLatitudeHeight.y);
+
+        // east
+        double3 east = new double3(
+            -math.sin(longitudeRad),
+             math.cos(longitudeRad),
+             0.0);
+
+        // north
+        double3 north = new double3(
+            -math.sin(latitudeRad) * math.cos(longitudeRad),
+            -math.sin(latitudeRad) * math.sin(longitudeRad),
+             math.cos(latitudeRad));
+
+        double3 offset = east * v.x + north * v.y;
+        obj.positionGlobeFixed += offset;
+    }
+}

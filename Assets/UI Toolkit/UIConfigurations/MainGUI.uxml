@@ -1,0 +1,117 @@
+<ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <ui:VisualElement name="AlertBox" style="flex-grow: 1; position: absolute; width: 25%; min-height: 10%; max-height: 100%; align-content: center;">
+        <ui:VisualElement name="EmptyDataIdentifier" style="flex-grow: 1; aspect-ratio: auto; height: 40px; width: 100%; flex-direction: row; max-width: none; max-height: none; position: relative; top: auto; align-content: auto;">
+            <ui:Label text="No data." name="SerialText" style="color: rgb(255, 255, 255); justify-content: flex-start; -unity-text-align: middle-left; left: 0%; margin-left: 4px;"/>
+        </ui:VisualElement>
+        <ui:VisualElement name="SerialListenIdentifier" enabled="true" style="flex-grow: 1; aspect-ratio: auto; height: 40px; width: 100%; flex-direction: row; max-width: none; max-height: none; position: relative; top: auto; align-self: auto; align-content: auto;">
+            <ui:Image source="project://database/Assets/Sprites/SerialIdentifier.png?fileID=2800000&amp;guid=09800c74457f09e4da73379c1a8f119a&amp;type=3#SerialIdentifier" name="SerialIcon" style="aspect-ratio: 1;"/>
+            <ui:Label text="Listening on serial port." name="SerialText" style="color: rgb(255, 255, 255); justify-content: flex-start; -unity-text-align: middle-left;"/>
+        </ui:VisualElement>
+        <ui:Image name="PacketPing" usage-hints="DynamicColor" tint-color="rgb(255, 255, 255)" source="project://database/Assets/Sprites/PacketPingIdentifier.png?fileID=2800000&amp;guid=f3578b68ea770b84790637e91ab79a85&amp;type=3#PacketPingIdentifier" style="height: 40px; width: 40px; background-image: none; -unity-background-image-tint-color: rgb(255, 255, 255);"/>
+    </ui:VisualElement>
+    <ui:VisualElement name="PlaybackViewer" style="flex-grow: 1; bottom: 0%; width: 75%; left: 12.5%; right: 12.5%; height: 20%; padding-top: 5px; padding-right: 5px; padding-bottom: 5px; padding-left: 5px; top: 80%; position: absolute; flex-direction: column; flex-wrap: nowrap;">
+        <ui:VisualElement name="PlayControls" style="flex-grow: 1; flex-direction: row; justify-content: center; align-self: auto; align-items: center;">
+            <ui:ToggleButtonGroup label="" name="PlayState" value="00100" focusable="false" is-multiple-selection="false" style="flex-wrap: nowrap; flex-direction: row; width: auto; left: auto; right: auto; aspect-ratio: 5; margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; padding-left: 0; height: 100%; justify-content: space-between; align-self: center; align-content: center;">
+                <ui:Button text="&lt;&lt;" name="FastRewind" style="aspect-ratio: 1; height: 100%; margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; align-self: center;"/>
+                <ui:Button text="&lt;" name="Rewind" style="aspect-ratio: 1; height: 100%; margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; align-self: center;"/>
+                <ui:Button text="||" name="Stop" style="aspect-ratio: 1; height: 100%; margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; align-self: center;"/>
+                <ui:Button text="&gt;" name="Forward" style="aspect-ratio: 1; height: 100%; margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; align-self: center;"/>
+                <ui:Button text="&gt;&gt;" name="FastForward" style="aspect-ratio: 1; height: 100%; width: auto; margin-right: 0; margin-top: 0; margin-bottom: 0; margin-left: 0; align-self: center;"/>
+            </ui:ToggleButtonGroup>
+            <ui:Button text="&gt;|" focusable="false" name="SnapToFront"/>
+            <ui:IntegerField label="Fast Speed" value="2" name="PlaySpeed" max-length="3" placeholder-text="2" keyboard-type="Default" tooltip="Speed Multiplier" style="aspect-ratio: auto; right: auto; width: auto; height: 80%; margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; -unity-text-align: middle-center;">
+                <Bindings>
+                    <ui:DataBinding property="value" data-source-path="_fastMultiplier" data-source="project://database/Assets/Runtime/PlaybackCfg.asset?fileID=11400000&amp;guid=c6cf1da1821b0174980c8fbe004b0c51&amp;type=2#PlaybackCfg" binding-mode="TwoWay"/>
+                </Bindings>
+            </ui:IntegerField>
+        </ui:VisualElement>
+        <ui:SliderInt label="" value="1" high-value="100" name="Timeline" usage-hints="DynamicTransform" show-input-field="false" fill="true" page-size="-0.03" direction="Horizontal" focusable="false" style="font-size: 14px; -unity-text-auto-size: none; -unity-text-generator: standard; white-space: normal; text-overflow: clip; flex-direction: row-reverse;">
+            <Bindings>
+                <ui:DataBinding property="highValue" data-source-path="_duration_ms" data-source="project://database/Assets/Runtime/PlaybackCfg.asset?fileID=11400000&amp;guid=c6cf1da1821b0174980c8fbe004b0c51&amp;type=2#PlaybackCfg" binding-mode="ToTarget"/>
+                <ui:DataBinding property="value" data-source-path="_currentTime_ms" data-source="project://database/Assets/Runtime/PlaybackCfg.asset?fileID=11400000&amp;guid=c6cf1da1821b0174980c8fbe004b0c51&amp;type=2#PlaybackCfg" binding-mode="TwoWay"/>
+                <ui:DataBinding property="label" data-source-path="_formattedPlaybackTime" data-source="project://database/Assets/Runtime/PlaybackCfg.asset?fileID=11400000&amp;guid=c6cf1da1821b0174980c8fbe004b0c51&amp;type=2#PlaybackCfg" binding-mode="ToTarget"/>
+            </Bindings>
+        </ui:SliderInt>
+    </ui:VisualElement>
+    <ui:Button text="Configure" name="OpenSettings" focusable="false" enabled="true" style="width: 7.5%; aspect-ratio: 1; align-self: flex-end; position: absolute;"/>
+    <ui:ScrollView name="Settings" horizontal-scroller-visibility="Hidden" enabled="true" style="background-color: rgba(0, 0, 0, 0.8); position: absolute; top: 15%; left: 10%; right: 10%; bottom: 15%;">
+        <ui:VisualElement name="Heading" style="flex-grow: 1; flex-direction: row; justify-content: space-between;">
+            <ui:Label text="Setup" binding-path="" name="TitleSettings" style="-unity-font-style: bold; font-size: 24px; color: rgb(253, 253, 253);"/>
+            <ui:Button text="Close" name="CloseSettings" focusable="false" style="bottom: auto; position: relative; top: auto; left: auto; right: auto; align-content: center; transform-origin: top; justify-content: flex-start; align-self: auto;"/>
+        </ui:VisualElement>
+        <ui:VisualElement name="OriginViewer" style="flex-grow: 1; flex-direction: row;">
+            <ui:Label text="Origin" name="OriginLabel" style="color: rgb(224, 224, 224);"/>
+            <ui:DoubleField label="Latitude" value="42.2" name="LatitudeOrigin" style="color: rgb(159, 159, 159); flex-direction: column-reverse; width: 15%;">
+                <Bindings>
+                    <ui:DataBinding property="value" data-source-path="_originLatitude" data-source="project://database/Assets/Runtime/PositioningCfg.asset?fileID=11400000&amp;guid=bdea507a7c94e994db654508f722b829&amp;type=2#PositioningCfg" binding-mode="TwoWay"/>
+                </Bindings>
+            </ui:DoubleField>
+            <ui:DoubleField label="Longitude" value="42.2" name="LongitudeOrigin" style="color: rgb(159, 159, 159); flex-direction: column-reverse; aspect-ratio: auto; width: 15%;">
+                <Bindings>
+                    <ui:DataBinding property="value" data-source-path="_originLongitude" data-source="project://database/Assets/Runtime/PositioningCfg.asset?fileID=11400000&amp;guid=bdea507a7c94e994db654508f722b829&amp;type=2#PositioningCfg" binding-mode="TwoWay"/>
+                </Bindings>
+            </ui:DoubleField>
+            <ui:DoubleField label="Altitude" value="42.2" name="AltitudeOrigin" style="color: rgb(159, 159, 159); flex-direction: column-reverse; width: 15%;">
+                <Bindings>
+                    <ui:DataBinding property="value" data-source-path="_originAltitude" data-source="project://database/Assets/Runtime/PositioningCfg.asset?fileID=11400000&amp;guid=bdea507a7c94e994db654508f722b829&amp;type=2#PositioningCfg" binding-mode="TwoWay"/>
+                </Bindings>
+            </ui:DoubleField>
+            <ui:DoubleField label="Accuracy (m)" value="42.2" name="AccuracyOrigin" style="color: rgb(159, 159, 159); flex-direction: column-reverse; width: 15%;">
+                <Bindings>
+                    <ui:DataBinding property="value" data-source-path="_originAccuracy" data-source="project://database/Assets/Runtime/PositioningCfg.asset?fileID=11400000&amp;guid=bdea507a7c94e994db654508f722b829&amp;type=2#PositioningCfg" binding-mode="TwoWay"/>
+                </Bindings>
+            </ui:DoubleField>
+            <ui:Button text="Current Location (WIP)" name="GetUserOrigin" focusable="false" style="aspect-ratio: 1; font-size: 5px; white-space: normal;"/>
+            <ui:Button text="From Tracking" name="GetTrackingOrigin" focusable="false" style="aspect-ratio: 1; white-space: normal; font-size: 8px;"/>
+            <ui:Button text="Refresh" name="RefreshOrigin" focusable="false" style="aspect-ratio: 1;"/>
+        </ui:VisualElement>
+        <ui:VisualElement name="Spacer" style="flex-grow: 1; height: 30px;"/>
+        <ui:Foldout text="File Reading" value="false" name="FileReadSubsettings" focusable="false" style="color: rgb(202, 202, 202); -unity-font-style: normal; -unity-text-outline-width: 0; border-top-width: 1px; border-right-width: 0; border-bottom-width: 1px; border-left-width: 0; border-left-color: rgb(58, 58, 58); border-right-color: rgb(58, 58, 58); border-top-color: rgb(58, 58, 58); border-bottom-color: rgb(58, 58, 58);">
+            <ui:TextField label="Recording File Path" placeholder-text="Path\To\File" name="FilePath" style="color: rgb(185, 185, 185);">
+                <Bindings>
+                    <ui:DataBinding property="value" data-source-path="_path" data-source="project://database/Assets/Runtime/DataCfg.asset?fileID=11400000&amp;guid=dfd00a40433938f4ab9f53911ef4a146&amp;type=2#DataCfg" binding-mode="TwoWay"/>
+                </Bindings>
+            </ui:TextField>
+            <ui:VisualElement name="FileActionsImport" style="flex-grow: 1; flex-direction: row; width: auto;">
+                <ui:Button text="Read Recording" name="ReadImport" focusable="false" style="color: rgb(60, 60, 60);"/>
+                <ui:Button text="Choose File" name="SelectImportFile" focusable="false" style="color: rgb(60, 60, 60);"/>
+            </ui:VisualElement>
+        </ui:Foldout>
+        <ui:VisualElement name="Spacer" style="flex-grow: 1; height: 30px;"/>
+        <ui:Foldout text="Serial Port Reading" value="false" name="SerialSubsettings" focusable="false" style="color: rgb(202, 202, 202); -unity-font-style: normal; width: auto; flex-direction: column; border-top-width: 1px; border-bottom-width: 1px; border-left-color: rgb(58, 58, 58); border-right-color: rgb(58, 58, 58); border-top-color: rgb(58, 58, 58); border-bottom-color: rgb(58, 58, 58);">
+            <ui:TextField label="Port Name" placeholder-text="COM5" name="PortName" style="color: rgb(185, 185, 185);">
+                <Bindings>
+                    <ui:DataBinding property="value" data-source-path="_portName" data-source="project://database/Assets/Runtime/DataCfg.asset?fileID=11400000&amp;guid=dfd00a40433938f4ab9f53911ef4a146&amp;type=2#DataCfg" binding-mode="TwoWay"/>
+                </Bindings>
+            </ui:TextField>
+            <ui:IntegerField label="Baud Rate" value="42" name="BaudRate">
+                <Bindings>
+                    <ui:DataBinding property="value" data-source-path="_baudRate" data-source="project://database/Assets/Runtime/DataCfg.asset?fileID=11400000&amp;guid=dfd00a40433938f4ab9f53911ef4a146&amp;type=2#DataCfg" binding-mode="TwoWay"/>
+                </Bindings>
+            </ui:IntegerField>
+            <ui:VisualElement name="SerialPortActions" style="flex-grow: 1; flex-direction: row; width: auto;">
+                <ui:Button text="Start Listening" name="EnableSerial" focusable="false" style="color: rgb(60, 60, 60); width: 37.5%; margin-right: 0; margin-left: 0;"/>
+                <ui:Label text="Label" name="SerialStatus" style="position: relative; width: 25%; -unity-text-align: middle-center;">
+                    <Bindings>
+                        <ui:DataBinding property="text" data-source-path="_serialStatus" data-source="project://database/Assets/Runtime/DataCfg.asset?fileID=11400000&amp;guid=dfd00a40433938f4ab9f53911ef4a146&amp;type=2#DataCfg" binding-mode="ToTarget"/>
+                    </Bindings>
+                </ui:Label>
+                <ui:Button text="Stop" name="DisableSerial" focusable="false" style="color: rgb(60, 60, 60); width: 37.5%; margin-left: 0; margin-right: 0;"/>
+            </ui:VisualElement>
+        </ui:Foldout>
+        <ui:VisualElement name="Spacer" style="flex-grow: 1; height: 30px;"/>
+        <ui:Foldout text="Exporting" name="ExportingSubsettings" value="false" focusable="false" style="color: rgb(173, 173, 173); border-top-width: 1px; border-bottom-width: 1px; border-left-color: rgb(58, 58, 58); border-right-color: rgb(58, 58, 58); border-top-color: rgb(58, 58, 58); border-bottom-color: rgb(58, 58, 58);">
+            <ui:TextField label="Export Path" placeholder-text="Path\To\File" name="ExportPath" style="color: rgb(185, 185, 185);">
+                <Bindings>
+                    <ui:DataBinding property="value" data-source-path="_exportPath" data-source="project://database/Assets/Runtime/DataCfg.asset?fileID=11400000&amp;guid=dfd00a40433938f4ab9f53911ef4a146&amp;type=2#DataCfg" binding-mode="TwoWay"/>
+                </Bindings>
+            </ui:TextField>
+            <ui:VisualElement name="FileActionsExport" style="flex-grow: 1; flex-direction: row; width: auto;">
+                <ui:Button text="Export Recorded Data" name="ExportData" focusable="false" style="color: rgb(55, 55, 55);"/>
+                <ui:Button text="Choose File" name="SelectExportFile" focusable="false" style="color: rgb(55, 55, 55);"/>
+            </ui:VisualElement>
+        </ui:Foldout>
+        <ui:VisualElement name="Spacer" style="flex-grow: 1; height: 30px;"/>
+        <ui:Button text="Clear Recorded Data" name="ClearData" focusable="false"/>
+    </ui:ScrollView>
+</ui:UXML>
