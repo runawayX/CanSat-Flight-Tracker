@@ -34,7 +34,6 @@ public struct DataKeyframe
     [JsonProperty("pitch")] public float pitch { get; set; }
     [JsonProperty("roll")] public float roll { get; set; }
 
-    [JsonProperty("rssi")] public int rssi { get; set; }
     [JsonProperty("sats")] public int sats { get; set; }
     [JsonProperty("fix")] public int fix { get; set; }
 
@@ -48,6 +47,17 @@ public struct DataKeyframe
     [JsonProperty("lvolt")] public float lvolt { get; set; }
 
     [JsonProperty("sd")] public float sd { get; set; }
+}
+
+public enum MeasureMappings
+{
+    Temperature, Humidity, Pressure, CO2, UV,
+    BarTemperature, BarAltitude,
+    Satellites, FixGPS,
+    AmbientLightRaw, SolarVoltage, SolarCurrent, SolarPower,
+    Temperature2,
+    PhotoRaw, PhotoVoltage,
+    StatusSD
 }
 
 public abstract class DataReceiver<STATUS_T>

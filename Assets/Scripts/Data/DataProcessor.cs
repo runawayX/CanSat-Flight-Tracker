@@ -18,13 +18,15 @@ using static CansatDataHelpers;
 
 public readonly struct GeoTransform
 {
+    public readonly int normalizedTime;
     public readonly double3 lonLatAlt;
     public readonly Quaternion localRotation;
 
-    public static GeoTransform identity = new GeoTransform(double3.zero, Quaternion.identity);
+    public static GeoTransform identity = new GeoTransform(-1, double3.zero, Quaternion.identity);
 
-    public GeoTransform(double3 lonLatAlt, Quaternion localRotation)
+    public GeoTransform(int normalizedTime, double3 lonLatAlt, Quaternion localRotation)
     {
+        this.normalizedTime = normalizedTime;
         this.lonLatAlt = lonLatAlt;
         this.localRotation = localRotation;
     }
@@ -254,10 +256,10 @@ public class DataProcessor : MonoBehaviour
     }
 
     /// <summary>
-    /// Gives interpolated Unity-based rotation vector at desired time-point
+    /// Gives interpolated GPS coordinates and Unity-Based rotation at desired time-point
     /// </summary>
     /// <param name="time_ms">Time-point (in milliseconds) at which to evaluate</param>
-    /// <param name="evaluated">Composited Pitch, Yaw, Roll</param>
+    /// <param name="evaluated">Evaluated location and rotation</param>
     /// <returns>Whether the evaluation succeeded (false if no data)</returns>
     public bool EvaluateTransform(int time_ms, out GeoTransform evaluated)
     {
@@ -281,7 +283,7 @@ public class DataProcessor : MonoBehaviour
             p = new double3(sK.lon, sK.lat, sK.alt);
             r = Quaternion.AngleAxis(sK.pitch, Vector3.right) * Quaternion.AngleAxis(sK.hdg, Vector3.up) * Quaternion.AngleAxis(sK.roll, Vector3.forward); ;
 
-            evaluated = new GeoTransform(p, r);
+            evaluated = new GeoTransform(sK.t - _startTimestamp, p, r);
             return true;
         }
 
@@ -291,7 +293,7 @@ public class DataProcessor : MonoBehaviour
         Vector3 ir = Vector3.Lerp(new Vector3(sK.pitch, sK.hdg, sK.roll), new Vector3(eK.pitch, eK.hdg, eK.roll), lerpRatio);
         r = Quaternion.AngleAxis(ir.x, Vector3.right) * Quaternion.AngleAxis(ir.y, Vector3.up) * Quaternion.AngleAxis(ir.z, Vector3.forward);
 
-        evaluated = new GeoTransform(p, r);
+        evaluated = new GeoTransform(time_ms - _startTimestamp, p, r);
         return true;
     }
 
@@ -323,6 +325,35 @@ public class DataProcessor : MonoBehaviour
                 CesiumWgs84Ellipsoid.LongitudeLatitudeHeightToEarthCenteredEarthFixed(new double3(k.lon, k.lat, k.alt)));
 
         return new Vector3((float) unityPos.x, (float) unityPos.y, (float) unityPos.z) - referencePosition;
+    }
+
+    public bool EvaluateMeasurement(int time_ms, MeasureMappings category, out double evaluated)
+    {
+        if (!_hasData)
+        {
+            evaluated = 0;
+            return false;
+        }
+
+        time_ms += _startTimestamp;
+        int clamp_time_ms = Math.Clamp(time_ms, _dataKeys.First().Key, _dataKeys.Last().Key);
+
+        var sK = _dataKeys.WeakPredecessor(clamp_time_ms).Value;
+        var eK = _dataKeys.WeakSuccessor(clamp_time_ms).Value;
+
+        double3 p;
+        Quaternion r;
+
+        if (sK.t == eK.t)
+        {
+            evaluated = GetMeasurement[category](sK);
+            return true;
+        }
+
+        float lerpRatio = (float) (time_ms - sK.t) / (eK.t - sK.t);
+
+        evaluated = math.lerp(GetMeasurement[category](sK), GetMeasurement[category](eK), lerpRatio);
+        return true;
     }
     #endregion
 }
@@ -359,4 +390,24 @@ public static class CansatDataHelpers
         double3 offset = east * v.x + north * v.y;
         obj.positionGlobeFixed += offset;
     }
+
+    public static readonly IReadOnlyDictionary<MeasureMappings, Func<DataKeyframe, double>> GetMeasurement = new Dictionary<MeasureMappings, Func<DataKeyframe, double>> {
+        { MeasureMappings.Temperature, k => k.temp },
+        { MeasureMappings.Humidity, k => k.hum },
+        { MeasureMappings.Pressure, k => k.pres },
+        { MeasureMappings.CO2, k => k.co2 },
+        { MeasureMappings.UV, k => k.uv },
+        { MeasureMappings.BarTemperature, k => k.btemp },
+        { MeasureMappings.BarAltitude, k => k.balt },
+        { MeasureMappings.Satellites, k => k.sats },
+        { MeasureMappings.FixGPS, k => k.fix },
+        { MeasureMappings.AmbientLightRaw, k => k.als },
+        { MeasureMappings.SolarVoltage, k => k.svolt },
+        { MeasureMappings.SolarCurrent, k => k.scurr },
+        { MeasureMappings.SolarPower, k => k.spwr },
+        { MeasureMappings.Temperature2, k => k.t2temp },
+        { MeasureMappings.PhotoRaw, k => k.lraw },
+        { MeasureMappings.PhotoVoltage, k => k.lvolt },
+        { MeasureMappings.StatusSD, k => k.sd },
+    };
 }
