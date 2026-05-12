@@ -21,4 +21,4 @@ Custom made app for viewing and saving live or recorded data from a team Mechani
 ## Usage notes
 **[Windows only because of serial port listening implementation]**
 <br>
-**[Cesium Unity package is excluded to minimize file size]**
+**[Cesium Unity package is excluded due to Github file size constraints]**
