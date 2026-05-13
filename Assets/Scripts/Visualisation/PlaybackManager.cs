@@ -148,7 +148,7 @@ public class PlaybackManager : MonoBehaviour
         TimeSpan c = TimeSpan.FromMilliseconds(_playback._currentTime_ms);
         TimeSpan d = TimeSpan.FromMilliseconds(_playback._duration_ms);
         
-        return $"{c.ToString(@"hh\:mm\:ss\.ff")}/{d.ToString(@"hh\:mm\:ss")}";
+        return $"{c.ToString(@"h\:mm\:ss\.ff")}/{d.ToString(@"h\:mm\:ss")}";
     }
 
     // Access & Management
@@ -170,8 +170,18 @@ public class PlaybackManager : MonoBehaviour
         _playback._currentTime_ms = Math.Clamp(_playback._currentTime_ms + direction * _playback._smallStep_ms, 0, _playback._duration_ms);
     }
 
+    public void ToStart()
+    {
+        _playback._currentTime_ms = 0;
+    }
+
     public void ToFront()
     {
         _playback._currentTime_ms = _playback._duration_ms;
+    }
+
+    public void JumpTime(int time_ms)
+    {
+        _playback._currentTime_ms = Math.Clamp(time_ms, 0, _playback._duration_ms);
     }
 }

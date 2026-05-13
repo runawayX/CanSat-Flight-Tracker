@@ -26,7 +26,7 @@ public class PlaybackConfiguration : ScriptableObject
     public int _smallStep_ms;
 
     [Header("GUI")]
-    public string _formattedPlaybackTime = "0:00.0000/0:00.0000";
+    public string _formattedPlaybackTime = "0:00:00.00/0:00:00";
 
     public ToggleButtonGroupState GetStateAsMask()
     {

@@ -6,7 +6,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
 
-public class MainUIHandler : MonoBehaviour
+public class RootGUIBehavior : MonoBehaviour
 {
     [Header("GUI Customisation")]
     [SerializeField] private Sprite _packetIcon;
@@ -22,11 +22,15 @@ public class MainUIHandler : MonoBehaviour
 
     [SerializeField] private OrbitalCameraControls _cameraControls;
 
+    [SerializeField] private VisualConfiguration _visualizationConfig;
+    [SerializeField] private DatapointVisualizer _visualization;
+
     [Header("Components")]
     [SerializeField] private UIDocument _ui;
 
     [Space(10)]
     [SerializeField] private KeyCode _submitKey;
+    [SerializeField] private InputActionReference _mousePosition;
 
     // UI Reference
     private VisualElement _settingsView;
@@ -36,18 +40,31 @@ public class MainUIHandler : MonoBehaviour
     private VisualElement _serialReadAlert;
     private Image _packetPing;
 
+    private VisualElement _worldHoverInfo;
+
     // Timing
     private float _packetPingTime = 0f;
+
+    // Input
+    private InputAction _actionMousePosition;
+
+    private void Awake()
+    {
+        _actionMousePosition = _mousePosition.action;
+    }
 
     private IEnumerator Start()
     {
         while (_ui.rootVisualElement.childCount == 0) yield return null;
 
+        // UI References
         _settingsView = _ui.rootVisualElement.Q<VisualElement>("Settings");
 
         _noDataAlert = _ui.rootVisualElement.Q<VisualElement>("EmptyDataIdentifier");
         _serialReadAlert = _ui.rootVisualElement.Q<VisualElement>("SerialListenIdentifier");
         _packetPing = _ui.rootVisualElement.Q<Image>("PacketPing");
+
+        _worldHoverInfo = _ui.rootVisualElement.Q<VisualElement>("WorldHoverInfo");
 
         // Binding Events
         _playbackStateControl = _ui.rootVisualElement.Q<ToggleButtonGroup>("PlayState");
@@ -78,12 +95,24 @@ public class MainUIHandler : MonoBehaviour
         _ui.rootVisualElement.Q<DoubleField>("LongitudeOrigin").RegisterCallback<KeyDownEvent>(e => { if (e.keyCode == _submitKey) RunRefreshOrigin(); });
         _ui.rootVisualElement.Q<DoubleField>("AltitudeOrigin").RegisterCallback<KeyDownEvent>(e => { if (e.keyCode == _submitKey) RunRefreshOrigin(); });
 
+        _ui.rootVisualElement.Q<EnumField>("WorldHoverDataCategory").RegisterCallback<ChangeEvent<Enum>>(e => { RunChangeHoverCategory((MeasureMappings) e.newValue); });
+
         // Preconfiguring UI
         _settingsView.SetEnabled(false);
         _settingsView.visible = false;
 
         _dataProcessor._onNewPacket.AddListener(PacketReceive);
         _dataProcessor._onBadPacket.AddListener(BadPacketReceive);
+    }
+
+    private void OnEnable()
+    {
+        _actionMousePosition.Enable();
+    }
+
+    private void OnDisable()
+    {
+        _actionMousePosition.Disable();
     }
 
     private void FixedUpdate()
@@ -95,6 +124,14 @@ public class MainUIHandler : MonoBehaviour
         _packetPing.tintColor = new Color(1f, 1f, 1f, _packetPingTime);
     }
 
+    private void Update()
+    {
+        if (_visualizationConfig._highlightedNode != null && !_visualizationConfig._highlightedNodeLock) _visualizationConfig._highlightInfoPosition = _actionMousePosition.ReadValue<Vector2>();
+
+        _worldHoverInfo.visible = _visualizationConfig._highlightedNode != null;
+        _worldHoverInfo.enabledSelf = _visualizationConfig._highlightedNode != null;
+    }
+
     #region UI Actions
     // Open Close
     public void OpenSettings()
@@ -103,6 +140,8 @@ public class MainUIHandler : MonoBehaviour
         _settingsView.visible = true;
 
         if (_cameraControls != null) _cameraControls.SetInputFreeze(0, true);
+
+        _visualizationConfig._highlightedNodeLock = false;
     }
 
     public void ToggleSettings()
@@ -113,6 +152,8 @@ public class MainUIHandler : MonoBehaviour
         _settingsView.visible = !previous;
 
         if (_cameraControls != null) _cameraControls.SetInputFreeze(0, !previous);
+
+        if (!previous) _visualizationConfig._highlightedNodeLock = false;
     }
 
     public void CloseSettings()
@@ -132,8 +173,8 @@ public class MainUIHandler : MonoBehaviour
     public void RunImportFileSelect()
     {
         ExtensionFilter[] filters = new ExtensionFilter[2] {
-            new ExtensionFilter("Log Files", "log", "txt", "json"),
-            new ExtensionFilter("All Files", "*")
+            new ExtensionFilter("Log Files ", "log", "txt", "json"),
+            new ExtensionFilter("All Files ", "*")
         };
 
         try
@@ -166,9 +207,9 @@ public class MainUIHandler : MonoBehaviour
     public void RunExportFileSelect()
     {
         ExtensionFilter[] extensions = new ExtensionFilter[3] {
-            new ExtensionFilter("Log", "log"),
-            new ExtensionFilter("Json", "json"),
-            new ExtensionFilter("Text", "txt")
+            new ExtensionFilter("Log ", "log"),
+            new ExtensionFilter("Json ", "json"),
+            new ExtensionFilter("Text ", "txt")
         };
 
         try
@@ -206,6 +247,16 @@ public class MainUIHandler : MonoBehaviour
     public void RunSnapToFront()
     {
         if (_playback != null) _playback.ToFront();
+    }
+
+    // Data Visualization
+    public void RunChangeHoverCategory(MeasureMappings category)
+    {
+        Debug.Log("Category changed");
+        _visualizationConfig._activeMeasureCategory = category;
+        
+        _visualization.RefreshDataPlot();
+        if (_visualization._visualization._highlightedNode != null) _visualization._visualization._highlightedNode.PushData();
     }
     #endregion
 

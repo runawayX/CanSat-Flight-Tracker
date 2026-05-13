@@ -778,7 +778,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 228033575}
   serializedVersion: 2
-  m_LocalRotation: {x: -3.483312e-15, y: -8.283321e-16, z: 5.471783e-18, w: 1}
+  m_LocalRotation: {x: -3.9273996e-15, y: -9.824557e-16, z: 1.269053e-17, w: 1}
   m_LocalPosition: {x: -1.02, y: 1.42, z: 4.26}
   m_LocalScale: {x: 1.0000007, y: 1.0000043, z: 1.000003}
   m_ConstrainProportionsScale: 0
@@ -802,19 +802,19 @@ MonoBehaviour:
   _detectTransformChanges: 1
   _localToGlobeFixedMatrix:
     c0:
-      x: -0.42791067777773106
-      y: 0.9038218200263751
-      z: 0.0000000000000009402599022674764
+      x: -0.4279106777777313
+      y: 0.903821820026375
+      z: 0.000000000000001144641858893404
       w: 0
     c1:
-      x: 0.5169381631534459
-      y: 0.24474222115782784
-      z: 0.8202955343932694
+      x: 0.5169381631534465
+      y: 0.24474222115782815
+      z: 0.8202955343932689
       w: 0
     c2:
-      x: -0.7413995003680034
-      y: -0.3510125067541366
-      z: 0.571946642117612
+      x: -0.7413995003680027
+      y: -0.35101250675413664
+      z: 0.5719466421176128
       w: 0
     c3:
       x: 3304650.4474693513
@@ -3216,6 +3216,91 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 361546339}
   m_CullTransparentMesh: 1
+--- !u!1 &375873950
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 375873951}
+  - component: {fileID: 375873953}
+  - component: {fileID: 375873952}
+  m_Layer: 3
+  m_Name: FlightDataVisualizer
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &375873951
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 375873950}
+  serializedVersion: 2
+  m_LocalRotation: {x: -1.7902346e-15, y: -5.2157435e-16, z: -4.5146824e-16, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1131139360}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &375873952
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 375873950}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c46dabaeea81bd44b901205b2a9837b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FlightDatapointVisualizer
+  _map: {fileID: 1131139359}
+  _data: {fileID: 734467809}
+  _visualization: {fileID: 11400000, guid: d7d39dac5d255c045b10817776f681a7, type: 2}
+  _dataPointPrefab: {fileID: 5519239548823147711, guid: fc66844e75de3e044b372bff8e73ea4c, type: 3}
+--- !u!114 &375873953
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 375873950}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 74f14e1eb550b9a4fb6c0a2f0456845b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CesiumForUnity::CesiumForUnity.CesiumGlobeAnchor
+  _adjustOrientationForGlobeWhenMoving: 1
+  _detectTransformChanges: 1
+  _localToGlobeFixedMatrix:
+    c0:
+      x: -0.42791037171238266
+      y: 0.9038211735630952
+      z: -0.00000000000000013749123521171436
+      w: 0
+    c1:
+      x: 0.5169359447050413
+      y: 0.24474117084266786
+      z: 0.8202920140818553
+      w: 0
+    c2:
+      x: -0.7413972908318975
+      y: -0.35101146065846567
+      z: 0.5719449375888674
+      w: 0
+    c3:
+      x: 3304652.43530439
+      y: 1564573.9371170087
+      z: 5208833.005663236
+      w: 1
+  _localToGlobeFixedMatrixIsValid: 1
 --- !u!1 &378090887
 GameObject:
   m_ObjectHideFlags: 0
@@ -4103,7 +4188,6 @@ GameObject:
   m_Component:
   - component: {fileID: 591175421}
   - component: {fileID: 591175418}
-  - component: {fileID: 591175420}
   - component: {fileID: 591175419}
   m_Layer: 0
   m_Name: WidgetRender
@@ -4207,14 +4291,6 @@ MonoBehaviour:
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
   m_Version: 2
---- !u!81 &591175420
-AudioListener:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 591175417}
-  m_Enabled: 1
 --- !u!4 &591175421
 Transform:
   m_ObjectHideFlags: 0
@@ -5798,6 +5874,8 @@ MonoBehaviour:
   _clickLayers:
     serializedVersion: 2
     m_Bits: 9
+  _playback: {fileID: 897082691}
+  _visualization: {fileID: 11400000, guid: d7d39dac5d255c045b10817776f681a7, type: 2}
   _mousePos: {fileID: 2117567454193075954, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   _click: {fileID: -2766493935936776574, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   _doubleClick: {fileID: -4512522825315250908, guid: 052faaac586de48259a63d0c4782560b, type: 3}
@@ -6235,6 +6313,7 @@ Transform:
   - {fileID: 2096696200}
   - {fileID: 1807465764}
   - {fileID: 228033579}
+  - {fileID: 375873951}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1139179962
@@ -6946,8 +7025,11 @@ MonoBehaviour:
   _playbackConfig: {fileID: 11400000, guid: c6cf1da1821b0174980c8fbe004b0c51, type: 2}
   _playback: {fileID: 897082691}
   _cameraControls: {fileID: 1022558411}
+  _visualizationConfig: {fileID: 11400000, guid: d7d39dac5d255c045b10817776f681a7, type: 2}
+  _visualization: {fileID: 375873952}
   _ui: {fileID: 1248656690}
   _submitKey: 13
+  _mousePosition: {fileID: 2117567454193075954, guid: 052faaac586de48259a63d0c4782560b, type: 3}
 --- !u!1 &1251449418
 GameObject:
   m_ObjectHideFlags: 0
@@ -8786,7 +8868,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1807465762}
   serializedVersion: 2
-  m_LocalRotation: {x: -1.0269563e-15, y: -3.299242e-16, z: -1.7195372e-16, w: 1}
+  m_LocalRotation: {x: -2.3314684e-15, y: -6.0630084e-16, z: -5.5948406e-16, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -8809,19 +8891,19 @@ MonoBehaviour:
   _detectTransformChanges: 1
   _localToGlobeFixedMatrix:
     c0:
-      x: -0.42791037171238205
-      y: 0.9038211735630954
-      z: 0.00000000000000007507770701085116
+      x: -0.4279103717123829
+      y: 0.9038211735630951
+      z: -0.00000000000000022433921651242035
       w: 0
     c1:
-      x: 0.5169359447050405
-      y: 0.24474117084266683
-      z: 0.8202920140818561
+      x: 0.5169359447050421
+      y: 0.24474117084266847
+      z: 0.8202920140818546
       w: 0
     c2:
-      x: -0.7413972908318984
-      y: -0.3510114606584656
-      z: 0.5719449375888662
+      x: -0.7413972908318969
+      y: -0.3510114606584655
+      z: 0.5719449375888683
       w: 0
     c3:
       x: 3304652.43530439

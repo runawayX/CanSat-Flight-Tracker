@@ -188,7 +188,7 @@ public class DataProcessor : MonoBehaviour
     /// <summary>
     /// Gives interpolated GPS coordinates and altitude at desired time-point
     /// </summary>
-    /// <param name="time_ms">Time-point (in milliseconds) at which to evaluate</param>
+    /// <param name="time_ms">Normalized time-point (in milliseconds) at which to evaluate</param>
     /// <param name="evaluated">Longitude, Latitude, Altitude</param>
     /// <returns>Whether the evaluation succeeded (false if no data)</returns>
     public bool EvaluateLocationGPS(int time_ms, out double3 evaluated)
@@ -225,7 +225,7 @@ public class DataProcessor : MonoBehaviour
     /// <summary>
     /// Gives interpolated Unity-based rotation vector at desired time-point
     /// </summary>
-    /// <param name="time_ms">Time-point (in milliseconds) at which to evaluate</param>
+    /// <param name="time_ms">Normalized time-point (in milliseconds) at which to evaluate</param>
     /// <param name="evaluated">Composited Pitch, Yaw, Roll</param>
     /// <returns>Whether the evaluation succeeded (false if no data)</returns>
     public bool EvaluateRotation(int time_ms, out Quaternion evaluated)
@@ -258,7 +258,7 @@ public class DataProcessor : MonoBehaviour
     /// <summary>
     /// Gives interpolated GPS coordinates and Unity-Based rotation at desired time-point
     /// </summary>
-    /// <param name="time_ms">Time-point (in milliseconds) at which to evaluate</param>
+    /// <param name="time_ms">Normalized time-point (in milliseconds) at which to evaluate</param>
     /// <param name="evaluated">Evaluated location and rotation</param>
     /// <returns>Whether the evaluation succeeded (false if no data)</returns>
     public bool EvaluateTransform(int time_ms, out GeoTransform evaluated)
@@ -327,6 +327,37 @@ public class DataProcessor : MonoBehaviour
         return new Vector3((float) unityPos.x, (float) unityPos.y, (float) unityPos.z) - referencePosition;
     }
 
+    public double3[] GetTravelPathGeo()
+    {
+        if (!_hasData) return new double3[0];
+
+        double3[] result = new double3[_dataKeys.Count];
+
+        int r = 0;
+        foreach (DataKeyframe k in _dataKeys.Values)
+        {
+            result[r] = new double3(k.lon, k.lat, k.alt);
+            ++r;
+        }
+
+        return result;
+    }
+
+    public double3 GetLastPositionGeo()
+    {
+        if (!_hasData) return double3.zero;
+
+        DataKeyframe k = _dataKeys.Values.Last();
+        return new double3(k.lon, k.lat, k.alt);
+    }
+
+    /// <summary>
+    /// Gives interpolated measurement for a specified category at the desired time-point.
+    /// </summary>
+    /// <param name="time_ms">Normalized time-point (in milliseconds) at which to evaluate</param>
+    /// <param name="category">Measurement category to evaluate</param>
+    /// <param name="evaluated">Evaluated measurement</param>
+    /// <returns>Whether the evaluation succeeded (false if no data)</returns>
     public bool EvaluateMeasurement(int time_ms, MeasureMappings category, out double evaluated)
     {
         if (!_hasData)
@@ -341,9 +372,6 @@ public class DataProcessor : MonoBehaviour
         var sK = _dataKeys.WeakPredecessor(clamp_time_ms).Value;
         var eK = _dataKeys.WeakSuccessor(clamp_time_ms).Value;
 
-        double3 p;
-        Quaternion r;
-
         if (sK.t == eK.t)
         {
             evaluated = GetMeasurement[category](sK);
@@ -354,6 +382,22 @@ public class DataProcessor : MonoBehaviour
 
         evaluated = math.lerp(GetMeasurement[category](sK), GetMeasurement[category](eK), lerpRatio);
         return true;
+    }
+
+    public int[] GetNormalizedKeyTimes()
+    {
+        if (!_hasData) return new int[0];
+
+        int[] result = new int[_dataKeys.Keys.Count];
+
+        int i = 0;
+        foreach (int t in _dataKeys.Keys)
+        {
+            result[i] = t - _startTimestamp;
+            ++i;
+        }
+
+        return result;
     }
     #endregion
 }
@@ -370,7 +414,12 @@ public static class CansatDataHelpers
         return start + (end - start) * ratio;
     }
 
-    public static void TranslateGPS(ref CesiumGlobeAnchor obj, Vector2 v)
+    /// <summary>
+    /// Moves the provided globe-anchored transform by a meter-based offset north/east
+    /// </summary>
+    /// <param name="obj">Globe-anchored Transform to move</param>
+    /// <param name="v">Meter-based offset</param>
+    public static void TranslateGPS(CesiumGlobeAnchor obj, Vector2 v)
     {
         double longitudeRad = math.radians(obj.longitudeLatitudeHeight.x);
         double latitudeRad = math.radians(obj.longitudeLatitudeHeight.y);
@@ -391,6 +440,9 @@ public static class CansatDataHelpers
         obj.positionGlobeFixed += offset;
     }
 
+    /// <summary>
+    /// Returns a specific measurement from a keyframe based on the provided category.
+    /// </summary>
     public static readonly IReadOnlyDictionary<MeasureMappings, Func<DataKeyframe, double>> GetMeasurement = new Dictionary<MeasureMappings, Func<DataKeyframe, double>> {
         { MeasureMappings.Temperature, k => k.temp },
         { MeasureMappings.Humidity, k => k.hum },
@@ -409,5 +461,25 @@ public static class CansatDataHelpers
         { MeasureMappings.PhotoRaw, k => k.lraw },
         { MeasureMappings.PhotoVoltage, k => k.lvolt },
         { MeasureMappings.StatusSD, k => k.sd },
+    };
+
+    public static IReadOnlyDictionary<MeasureMappings, string> GetMeasureSuffix = new Dictionary<MeasureMappings, string> {
+        { MeasureMappings.Temperature, "°C" },
+        { MeasureMappings.Humidity, "%" },
+        { MeasureMappings.Pressure, "hPa" },
+        { MeasureMappings.CO2, "ppm" },
+        { MeasureMappings.UV, "index" },
+        { MeasureMappings.BarTemperature, "°C" },
+        { MeasureMappings.BarAltitude, "m" },
+        { MeasureMappings.Satellites, "" },
+        { MeasureMappings.FixGPS, "" },
+        { MeasureMappings.AmbientLightRaw, "raw" },
+        { MeasureMappings.SolarVoltage, "V" },
+        { MeasureMappings.SolarCurrent, "A" },
+        { MeasureMappings.SolarPower, "W" },
+        { MeasureMappings.Temperature2, "°C" },
+        { MeasureMappings.PhotoRaw, "raw" },
+        { MeasureMappings.PhotoVoltage, "V" },
+        { MeasureMappings.StatusSD, "" },
     };
 }

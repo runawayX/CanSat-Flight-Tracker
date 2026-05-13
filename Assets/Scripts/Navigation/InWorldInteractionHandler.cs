@@ -9,6 +9,10 @@ public class InWorldInteractionHandler : MonoBehaviour
     [SerializeField] private LayerMask _clickLayers;
 
     [Header("Components")]
+    [SerializeField] private PlaybackManager _playback;
+    [SerializeField] private VisualConfiguration _visualization;
+
+    [Space(10)]
     [SerializeField] private InputActionReference _mousePos;
 
     [Space(10)]
@@ -34,6 +38,21 @@ public class InWorldInteractionHandler : MonoBehaviour
 
         _view = Camera.main;
         _orbiter = gameObject.GetComponent<OrbitalCameraControls>();
+    }
+
+    private void FixedUpdate()
+    {
+        if (TraceClick(out RaycastHit target) && target.collider.gameObject.CompareTag("DataPoint"))
+        {
+            if (_visualization._highlightedNode == null)
+            {
+                _visualization._highlightedNode = target.collider.gameObject.GetComponent<WorldspaceDatapoint>();
+                _visualization._highlightedNode.PushData();
+            }
+        } else if (!_visualization._highlightedNodeLock)
+        {
+            _visualization._highlightedNode = null;
+        }
     }
 
     private void OnEnable()
@@ -77,6 +96,9 @@ public class InWorldInteractionHandler : MonoBehaviour
     public void OnClickPressed(InputAction.CallbackContext c)
     {
         if (EventSystem.current.IsPointerOverGameObject()) return;
+
+        if (_visualization._highlightedNodeLock) _visualization._highlightedNodeLock = false;
+        else if (_visualization._highlightedNode != null) _visualization._highlightedNodeLock = true;
     }
 
     public void OnDoubleClickPressed(InputAction.CallbackContext c)
@@ -84,6 +106,7 @@ public class InWorldInteractionHandler : MonoBehaviour
         if (EventSystem.current.IsPointerOverGameObject() || !TraceClick(out RaycastHit trace)) return;
 
         if (trace.collider.gameObject.CompareTag("Focusable")) _orbiter.SelectLockTarget(trace.collider.gameObject.transform);
+        else if (_visualization._highlightedNode != null) _playback.JumpTime(_visualization._highlightedNode._time_ms);
         else _orbiter.JumpToLocation(trace.point);
     }
 }

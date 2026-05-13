@@ -179,7 +179,7 @@ public class OrbitalCameraControls : MonoBehaviour
             }
             else
             {
-                TranslateGPS(ref _orbit, (forward + right) * Time.deltaTime);
+                TranslateGPS(_orbit, (forward + right) * Time.deltaTime);
                 _orbit.longitudeLatitudeHeight += new double3(0, 0, 1) * fly * Time.deltaTime;
                 _cameraOrbiter.Radius = Mathf.Clamp(_cameraOrbiter.Radius - _actionZoom.ReadValue<float>() * (_inputFreezeFlags == 0 ? 1 : 0), _zoomBounds.x, _zoomBounds.y);
             }

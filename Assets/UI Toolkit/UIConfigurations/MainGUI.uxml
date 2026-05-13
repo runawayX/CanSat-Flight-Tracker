@@ -1,5 +1,5 @@
 <ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
-    <ui:VisualElement name="AlertBox" style="flex-grow: 1; position: absolute; width: 25%; min-height: 10%; max-height: 100%; align-content: center;">
+    <ui:VisualElement name="AlertBox" style="flex-grow: 1; position: absolute; width: 25%; min-height: 10%; max-height: 100%; align-content: center; display: flex; visibility: visible;">
         <ui:VisualElement name="EmptyDataIdentifier" style="flex-grow: 1; aspect-ratio: auto; height: 40px; width: 100%; flex-direction: row; max-width: none; max-height: none; position: relative; top: auto; align-content: auto;">
             <ui:Label text="No data." name="SerialText" style="color: rgb(255, 255, 255); justify-content: flex-start; -unity-text-align: middle-left; left: 0%; margin-left: 4px;"/>
         </ui:VisualElement>
@@ -114,4 +114,35 @@
         <ui:VisualElement name="Spacer" style="flex-grow: 1; height: 30px;"/>
         <ui:Button text="Clear Recorded Data" name="ClearData" focusable="false"/>
     </ui:ScrollView>
+    <ui:VisualElement name="WorldHoverInfo" usage-hints="DynamicTransform" style="flex-grow: 1; visibility: visible; position: absolute; aspect-ratio: auto; width: 200px; background-color: rgba(0, 0, 0, 0.8); overflow: hidden; display: flex; bottom: 0; left: 0;">
+        <ui:Label text="" name="WorldHoverLocation" style="color: rgb(243, 243, 243);">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="_highlightedNodeLocation" data-source="project://database/Assets/Runtime/VisualCfg.asset?fileID=11400000&amp;guid=d7d39dac5d255c045b10817776f681a7&amp;type=2#VisualCfg" binding-mode="ToTarget"/>
+            </Bindings>
+        </ui:Label>
+        <ui:Label text="Label" name="WorldHoverTime" style="color: rgb(255, 255, 255); padding-bottom: 0; -unity-text-align: lower-left; margin-bottom: 0;">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="_highlightedNodeNormalizedTime" data-source="project://database/Assets/Runtime/VisualCfg.asset?fileID=11400000&amp;guid=d7d39dac5d255c045b10817776f681a7&amp;type=2#VisualCfg" binding-mode="ToTarget"/>
+            </Bindings>
+        </ui:Label>
+        <ui:Label text="Label" name="WorldHoverSystemTime" style="color: rgb(147, 147, 147); height: 20px; -unity-text-align: upper-left; padding-top: 0; padding-bottom: 0; margin-top: 0;">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="_highlightedNodeTime" data-source="project://database/Assets/Runtime/VisualCfg.asset?fileID=11400000&amp;guid=d7d39dac5d255c045b10817776f681a7&amp;type=2#VisualCfg" binding-mode="ToTarget"/>
+            </Bindings>
+        </ui:Label>
+        <ui:Label text="Label" name="WorldHoverData" style="color: rgb(255, 255, 255);">
+            <Bindings>
+                <ui:DataBinding property="text" data-source-path="_highlightedNodeEvaluated" data-source="project://database/Assets/Runtime/VisualCfg.asset?fileID=11400000&amp;guid=d7d39dac5d255c045b10817776f681a7&amp;type=2#VisualCfg" binding-mode="ToTarget"/>
+            </Bindings>
+        </ui:Label>
+        <Bindings>
+            <ui:DataBinding property="style.left" data-source-path="_highlightInfoPosition.x" data-source="project://database/Assets/Runtime/VisualCfg.asset?fileID=11400000&amp;guid=d7d39dac5d255c045b10817776f681a7&amp;type=2#VisualCfg" binding-mode="ToTarget"/>
+            <ui:DataBinding property="style.bottom" data-source-path="_highlightInfoPosition.y" data-source="project://database/Assets/Runtime/VisualCfg.asset?fileID=11400000&amp;guid=d7d39dac5d255c045b10817776f681a7&amp;type=2#VisualCfg" binding-mode="ToTarget"/>
+        </Bindings>
+        <ui:EnumField label="" value="" type="MeasureMappings, Assembly-CSharp" name="WorldHoverDataCategory" style="height: 30px; overflow: hidden; color: rgb(118, 118, 118); align-self: auto; flex-direction: row; font-size: 10px;">
+            <Bindings>
+                <ui:DataBinding property="value" data-source-path="_activeMeasureCategory" data-source="project://database/Assets/Runtime/VisualCfg.asset?fileID=11400000&amp;guid=d7d39dac5d255c045b10817776f681a7&amp;type=2#VisualCfg" binding-mode="TwoWay"/>
+            </Bindings>
+        </ui:EnumField>
+    </ui:VisualElement>
 </ui:UXML>
