@@ -9,9 +9,9 @@ Custom made app for viewing and saving live or recorded data from a team Mechani
 <br><br>
 - linearly interpolated playback
 - flight trajectory visualization
+- measured data point plotting along flight trajectory
 
 ### Planned features:
-- measured data point plotting along flight trajectory
 - measured data diagram generation
 - sidebar with playback-time measurements
 
