@@ -1,9 +1,12 @@
-using System.Collections.Generic;
-using System.Linq;
 using CesiumForUnity;
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Linq;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Events;
+using Color = UnityEngine.Color;
 
 public class DatapointVisualizer : MonoBehaviour
 {
@@ -16,7 +19,12 @@ public class DatapointVisualizer : MonoBehaviour
 
     private CesiumGlobeAnchor _transformGPS;
 
-    [SerializeField] private GameObject _dataPointPrefab;
+    [Space(10)]
+    [SerializeField] private GameObject _datapointPrefab;
+
+    public float _minDatapointProximity = 1f;
+    [SerializeField] private LayerMask _datapointLayer;
+
     private static InstantiateParameters _prefabSpawnParameters;
     private List<WorldspaceDatapoint> _dataPlot;
 
@@ -25,6 +33,9 @@ public class DatapointVisualizer : MonoBehaviour
 
     private void Awake()
     {
+        _visualization.LoadVisualCustomization();
+        //_visualization.SerializeTestCustomization();
+
         _prefabSpawnParameters = new InstantiateParameters();
         _prefabSpawnParameters.parent = gameObject.transform;
         _prefabSpawnParameters.worldSpace = false;
@@ -41,10 +52,14 @@ public class DatapointVisualizer : MonoBehaviour
     {
         if (!incremental) return;
 
+        Vector3 instancePos = _data.GetLastPositionUnitySpaceRelative(_map, transform.position);
+        //if (Physics.CheckSphere(instancePos, _minDatapointProximity, _datapointLayer, QueryTriggerInteraction.Collide)) return;
+        if (_dataPlot.Count > 0 && Vector3.Distance(_dataPlot[^1].transform.position, instancePos) < _minDatapointProximity) return;
+
         if (_data.EvaluateLocationGPS(0, out double3 origin)) {
             _transformGPS.longitudeLatitudeHeight = origin;
 
-            WorldspaceDatapoint dp = Instantiate(_dataPointPrefab, _data.GetLastPositionUnitySpaceRelative(_map, transform.position), Quaternion.identity, _prefabSpawnParameters).GetComponent<WorldspaceDatapoint>();
+            WorldspaceDatapoint dp = Instantiate(_datapointPrefab, instancePos, Quaternion.identity, _prefabSpawnParameters).GetComponent<WorldspaceDatapoint>();
             
             dp._parent = this;
             dp._location = _data.GetLastPositionGeo();
@@ -67,7 +82,18 @@ public class DatapointVisualizer : MonoBehaviour
             int nodeID = 0;
             foreach (Vector3 point in _data.GetTravelPathUnitySpaceRelative(_map, transform.position))
             {
-                WorldspaceDatapoint dp = Instantiate(_dataPointPrefab, point, Quaternion.identity, _prefabSpawnParameters).GetComponent<WorldspaceDatapoint>();
+                //if (Physics.CheckSphere(point, _minDatapointProximity, _datapointLayer, QueryTriggerInteraction.Collide))
+                //{
+                //    ++nodeID;
+                //    continue;
+                //}
+                if (_dataPlot.Count > 0 && Vector3.Distance(_dataPlot[^1].transform.localPosition, point) < _minDatapointProximity)
+                {
+                    ++nodeID;
+                    continue;
+                }
+
+                WorldspaceDatapoint dp = Instantiate(_datapointPrefab, point, Quaternion.identity, _prefabSpawnParameters).GetComponent<WorldspaceDatapoint>();
 
                 dp._parent = this;
                 dp._location = locations[nodeID];
@@ -78,6 +104,14 @@ public class DatapointVisualizer : MonoBehaviour
                 ++nodeID;
             }
         }
+    }
+
+    public Color ActiveCategoryEvaluateDataColor(double data)
+    {
+        int category = Math.Min((int) _visualization._activeMeasureCategory, _visualization._categoryColors.Count - 1);
+        float lerpRatio = Mathf.Clamp01((float)((data - _visualization._categoryBounds[category].x) / _visualization._categoryBounds[category].y));
+
+        return _visualization._categoryColors[category].Evaluate(lerpRatio);
     }
 
     public void RefreshDataPlot()

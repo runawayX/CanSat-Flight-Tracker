@@ -110,6 +110,9 @@ public class OrbitalCameraControls : MonoBehaviour
         }
 
         // Setup visual
+        _smoothingReference = _orbit.longitudeLatitudeHeight;
+        _smoothingStaticTarget = _orbit.longitudeLatitudeHeight;
+
         _maxSmoothingTime = _snapSmoothing.keys.Last().time;
         _smoothingTime = _maxSmoothingTime;
 

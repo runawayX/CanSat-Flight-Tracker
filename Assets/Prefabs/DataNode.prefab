@@ -13,9 +13,9 @@ GameObject:
   - component: {fileID: 1236497727550318738}
   - component: {fileID: 6951053018198731231}
   - component: {fileID: 1926359277106545715}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: DataNode
-  m_TagString: DataPoint
+  m_TagString: Datapoint
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -68,7 +68,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: -3033667219593020291, guid: 708981d1d97306441ab882fab37b74a1, type: 3}
+  - {fileID: 2100000, guid: e3a9d592084e744479f78a7000872366, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0

@@ -5,7 +5,7 @@ TagManager:
   serializedVersion: 3
   tags:
   - Focusable
-  - DataPoint
+  - Datapoint
   layers:
   - Default
   - TransparentFX
@@ -15,7 +15,7 @@ TagManager:
   - UI
   - Billboards
   - Widgets
-  - 
+  - Datapoint
   - 
   - 
   - 

@@ -42,7 +42,7 @@ public class InWorldInteractionHandler : MonoBehaviour
 
     private void FixedUpdate()
     {
-        if (TraceClick(out RaycastHit target) && target.collider.gameObject.CompareTag("DataPoint"))
+        if (TraceClick(out RaycastHit target) && target.collider.gameObject.CompareTag("Datapoint"))
         {
             if (_visualization._highlightedNode == null)
             {
