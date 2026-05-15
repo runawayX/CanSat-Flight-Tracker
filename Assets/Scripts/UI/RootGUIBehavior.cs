@@ -95,7 +95,7 @@ public class RootGUIBehavior : MonoBehaviour
         _ui.rootVisualElement.Q<DoubleField>("LongitudeOrigin").RegisterCallback<KeyDownEvent>(e => { if (e.keyCode == _submitKey) RunRefreshOrigin(); });
         _ui.rootVisualElement.Q<DoubleField>("AltitudeOrigin").RegisterCallback<KeyDownEvent>(e => { if (e.keyCode == _submitKey) RunRefreshOrigin(); });
 
-        _ui.rootVisualElement.Q<EnumField>("WorldHoverDataCategory").RegisterCallback<ChangeEvent<Enum>>(e => { RunChangeHoverCategory((MeasureMappings) e.newValue); });
+        _ui.rootVisualElement.Q<DropdownField>("WorldHoverDataCategory").RegisterCallback<ChangeEvent<Enum>>(e => { RunChangeHoverCategory((MeasureMappings) e.newValue); });
 
         // Preconfiguring UI
         _settingsView.SetEnabled(false);
@@ -250,7 +250,7 @@ public class RootGUIBehavior : MonoBehaviour
     }
 
     // Data Visualization
-    public void RunChangeHoverCategory(MeasureMappings category)
+    public void RunChangeHoverCategory(string category)
     {
         Debug.Log("Category changed");
         _visualizationConfig._activeMeasureCategory = category;

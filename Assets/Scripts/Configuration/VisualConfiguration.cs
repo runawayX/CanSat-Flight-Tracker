@@ -4,36 +4,6 @@ using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
 
-[System.Serializable]
-public struct MeasureProperties
-{
-    [JsonProperty("PrioritizeDefault")] public bool _prioritizeDefault { get; set; }
-    [JsonProperty("DefaultBounds")] public double2 _defaultBounds { get; set; }
-    [JsonIgnore] public double2 _runtimeBounds;
-    [JsonIgnore] public bool _hasRuntimeBounds;
-
-    public MeasureProperties(double2 defaultBounds, bool prioritizeDefault)
-    {
-        _prioritizeDefault = prioritizeDefault;
-        _defaultBounds = defaultBounds;
-
-        _runtimeBounds = _prioritizeDefault ? defaultBounds : double2.zero;
-        _hasRuntimeBounds = false;
-    }
-
-    public static void CheckRuntimeBounds(ref MeasureProperties properties, double value)
-    {
-        if (properties._prioritizeDefault) return;
-
-        if (properties._hasRuntimeBounds) properties._runtimeBounds = new double2(math.min(properties._runtimeBounds.x, value), math.max(properties._runtimeBounds.y, value));
-        else
-        {
-            properties._runtimeBounds = value;
-            properties._hasRuntimeBounds = true;
-        }
-    }
-}
-
 [CreateAssetMenu(fileName = "New Visualization Configuration", menuName = "Cansat/Visualization Configuration")]
 public class VisualConfiguration : ScriptableObject
 {
@@ -47,7 +17,7 @@ public class VisualConfiguration : ScriptableObject
     public IReadOnlyDictionary<MeasureMappings, Gradient> _visualizationColorMapping;
 
     [Header("Configuration")]
-    public MeasureMappings _activeMeasureCategory;
+    public string _activeMeasureCategory;
 
     [Header("Runtime")]
     public double _evaluatedActiveMeasurement;
@@ -109,11 +79,11 @@ public class VisualConfiguration : ScriptableObject
 
     public static void SetHighlightedNode(VisualConfiguration instance, double3 location, int time, int normalizedTime, double evaluated)
     {
-        instance._highlightedNodeLocation = $"Latitude: {location.x}°\nLongitude: {location.y}°\n{location.z}m above sea level";
+        instance._highlightedNodeLocation = $"Longitude: {location.x}°\nLatitude: {location.y}°\n{location.z}m above sea level";
 
         instance._highlightedNodeTime = $"(system time {TimeSpan.FromMilliseconds(time).ToString(@"h\:mm\:ss\.ff")})";
         instance._highlightedNodeNormalizedTime = $"At {TimeSpan.FromMilliseconds(normalizedTime).ToString(@"h\:mm\:ss\.ff")}";
 
-        instance._highlightedNodeEvaluated = $"{instance._activeMeasureCategory}: {Math.Round(evaluated, 4)} {CansatDataHelpers.GetMeasureSuffix[instance._activeMeasureCategory]}";
+        instance._highlightedNodeEvaluated = $"{CansatDataHelpers.MeasureProperties[instance._activeMeasureCategory]._name}: {Math.Round(evaluated, 4)} {CansatDataHelpers.MeasureProperties[instance._activeMeasureCategory]._suffix}";
     }
 }

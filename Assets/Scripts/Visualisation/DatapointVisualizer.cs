@@ -108,10 +108,12 @@ public class DatapointVisualizer : MonoBehaviour
 
     public Color ActiveCategoryEvaluateDataColor(double data)
     {
-        int category = Math.Min((int) _visualization._activeMeasureCategory, _visualization._categoryColors.Count - 1);
-        float lerpRatio = Mathf.Clamp01((float)((data - _visualization._categoryBounds[category].x) / _visualization._categoryBounds[category].y));
+        //int category = Math.Min((int) _visualization._activeMeasureCategory, _visualization._categoryColors.Count - 1);
+        //float lerpRatio = Mathf.Clamp01((float)((data - _visualization._categoryBounds[category].x) / _visualization._categoryBounds[category].y));
 
-        return _visualization._categoryColors[category].Evaluate(lerpRatio);
+        //return _visualization._categoryColors[category].Evaluate(lerpRatio);
+
+        return Color.purple; // placeholder until category bounds and colors are implemented
     }
 
     public void RefreshDataPlot()

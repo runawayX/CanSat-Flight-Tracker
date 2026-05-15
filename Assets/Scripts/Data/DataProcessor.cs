@@ -32,6 +32,71 @@ public readonly struct GeoTransform
     }
 }
 
+/// <summary>
+/// Common Data Mappings
+/// </summary>
+public struct CDM
+{
+    public static int t = -1;
+    public static int lat = -1, lon = -1, alt = -1;
+    public static int hdg = -1, pitch = -1, roll = -1;
+
+    public static void Remap(string key, int index)
+    {
+        switch (key)
+        {
+            case "t": t = index; break;
+            case "lat": lat = index; break;
+            case "lon": lon = index; break;
+            case "alt": alt = index; break;
+            case "hdg": hdg = index; break;
+            case "pitch": pitch = index; break;
+            case "roll": roll = index; break;
+        }
+    }
+}
+
+[System.Serializable]
+public struct MeasureProperties
+{
+    [JsonProperty("DisplayName")] public string _name { get; set; }
+    [JsonProperty("DisplaySuffix")] public string _suffix { get; set; }
+    [JsonProperty("PrioritizeDefault")] public bool _prioritizeDefault { get; set; }
+    [JsonProperty("DefaultBounds")] public double2 _defaultBounds { get; set; }
+    [JsonIgnore] public double2 _runtimeBounds;
+    [JsonIgnore] public bool _hasRuntimeBounds;
+
+    public MeasureProperties(double2 defaultBounds, bool prioritizeDefault)
+    {
+        _name = "Undefined";
+        _suffix = "";
+
+        _prioritizeDefault = prioritizeDefault;
+        _defaultBounds = defaultBounds;
+
+        _runtimeBounds = _prioritizeDefault ? defaultBounds : double2.zero;
+        _hasRuntimeBounds = false;
+    }
+
+    public double2 GetBounds()
+    {
+        if (_prioritizeDefault || !_hasRuntimeBounds) return _defaultBounds;
+        else return _runtimeBounds;
+    }
+
+    public static void CheckRuntimeBounds(ref MeasureProperties properties, double value)
+    {
+        if (properties._prioritizeDefault) return;
+
+        if (properties._hasRuntimeBounds) properties._runtimeBounds = new double2(math.min(properties._runtimeBounds.x, value), math.max(properties._runtimeBounds.y, value));
+        else
+        {
+            properties._runtimeBounds = value;
+            properties._hasRuntimeBounds = true;
+        }
+    }
+}
+
 public class DataProcessor : MonoBehaviour
 {
     [Header("Components")]
@@ -51,7 +116,9 @@ public class DataProcessor : MonoBehaviour
 
     // Internal
     public int _startTimestamp { get; private set; } = 0;
-    private TreeDictionary<int, DataKeyframe> _dataKeys;
+    public int _endTimestamp { get; private set; } = 0;
+    private List<TreeDictionary<int, double>> _dataKeys;
+
     public bool _hasData { get; private set; } = false;
 
     public DataReceiver<bool> _recordedDataFeed { get; private set; }
@@ -59,7 +126,9 @@ public class DataProcessor : MonoBehaviour
 
     private void Awake()
     {
-        _dataKeys = new TreeDictionary<int, DataKeyframe>();
+        _dataKeys = new List<TreeDictionary<int, double>>();
+
+        DynamicDataMappings = new Dictionary<string, int>();
     }
 
     private void Start()
@@ -145,18 +214,27 @@ public class DataProcessor : MonoBehaviour
     #endregion
 
     #region Data Processing
-    public void ProcessDatakey(DataKeyframe p, bool incremental)
+    public void ProcessDatakey(Dictionary<string, double> packet, bool incremental)
     {
-        if (_logAddPacket) Debug.Log($"Processing {p}...");
+        //if (_logAddPacket) Debug.Log($"Processing {p}...");
 
-        if (_dataKeys.Keys.Contains(p.t))
+        int t = (int) packet["t"];
+
+        foreach (var sub in packet)
         {
-            Debug.LogWarning($"Tried to add duplicate keyframe {p}");
-            return;
-        }
+            if (!DynamicDataMappings.ContainsKey(sub.Key))
+            {
+                DynamicDataMappings.Add(sub.Key, _dataKeys.Count);
+                CDM.Remap(sub.Key, DynamicDataMappings[sub.Key]);
 
-        _dataKeys.Add(p.t, p);
-        _startTimestamp = _dataKeys.First().Key;
+                _dataKeys.Add(new TreeDictionary<int, double>());
+            }
+
+            _dataKeys[DynamicDataMappings[sub.Key]].Add(t, sub.Value);
+
+            _startTimestamp = Math.Min(_startTimestamp, t);
+            _endTimestamp = Math.Max(_endTimestamp, t);
+        }
 
         _hasData = true;
         _onNewPacket.Invoke(incremental);
@@ -175,7 +253,7 @@ public class DataProcessor : MonoBehaviour
     /// <returns></returns>
     public int TotalTime()
     {
-        if (_hasData) return _dataKeys.Last().Key - _startTimestamp;
+        if (_hasData) return _endTimestamp - _startTimestamp;
         else return 0;
     }
 
@@ -200,24 +278,29 @@ public class DataProcessor : MonoBehaviour
         }
 
         time_ms += _startTimestamp;
-        int clamp_time_ms = Math.Clamp(time_ms, _dataKeys.First().Key, _dataKeys.Last().Key);
+        int clamp_time_ms = Math.Clamp(time_ms, _dataKeys[CDM.lat].First().Key, _dataKeys[CDM.lat].Last().Key);
 
-        var sK = _dataKeys.WeakPredecessor(clamp_time_ms).Value;
-        var eK = _dataKeys.WeakSuccessor(clamp_time_ms).Value;
+        // taking lon as base as gps data is uniform
+        int sT = _dataKeys[CDM.lon].WeakPredecessor(clamp_time_ms).Key;
+        int eT = _dataKeys[CDM.lon].WeakSuccessor(clamp_time_ms).Key;
 
-        if (sK.t == eK.t)
+        if (sT == eT)
         {
-            evaluated = new double3(sK.lon, sK.lat, sK.alt);
+            evaluated = new double3(
+                _dataKeys[CDM.lon][sT],
+                _dataKeys[CDM.lat][sT],
+                _dataKeys[CDM.alt][sT]);
             return true;
         }
 
-        float lerpRatio = (float) (time_ms - sK.t) / (eK.t - sK.t);
+        float lerpRatio = (float) (time_ms - sT) / (eT - sT);
 
         //Debug.Log($"Lerp {lerpRatio} ({time_ms}ms)\nFrom {sK.t}ms to {eK.t}ms");
 
-        evaluated = new double3(math.lerp(sK.lon, eK.lon, lerpRatio),
-            math.lerp(sK.lat, eK.lat, lerpRatio),
-            math.lerp(sK.alt, eK.alt, lerpRatio));
+        evaluated = new double3(
+            math.lerp(_dataKeys[CDM.lon][sT], _dataKeys[CDM.lon][eT], lerpRatio),
+            math.lerp(_dataKeys[CDM.lat][sT], _dataKeys[CDM.lat][eT], lerpRatio),
+            math.lerp(_dataKeys[CDM.alt][sT], _dataKeys[CDM.alt][eT], lerpRatio));
 
         return true;
     }
@@ -237,29 +320,34 @@ public class DataProcessor : MonoBehaviour
         }
 
         time_ms += _startTimestamp;
-        int clamp_time_ms = Math.Clamp(time_ms, _dataKeys.First().Key, _dataKeys.Last().Key);
+        int clamp_time_ms = Math.Clamp(time_ms, _dataKeys[CDM.hdg].First().Key, _dataKeys[CDM.hdg].Last().Key);
 
-        var sK = _dataKeys.WeakPredecessor(clamp_time_ms).Value;
-        var eK = _dataKeys.WeakSuccessor(clamp_time_ms).Value;
+        // taking hdg as base as rotation data is uniform
+        int sT = _dataKeys[CDM.hdg].WeakPredecessor(clamp_time_ms).Key;
+        int eT = _dataKeys[CDM.hdg].WeakSuccessor(clamp_time_ms).Key;
 
-        if (sK.t == eK.t)
+        if (sT == eT)
         {
-            evaluated = Quaternion.AngleAxis(sK.pitch, Vector3.right) * Quaternion.AngleAxis(sK.hdg, Vector3.up) * Quaternion.AngleAxis(sK.roll, Vector3.forward); ;
+            evaluated = Quaternion.AngleAxis((float) _dataKeys[CDM.pitch][sT], Vector3.right) 
+                * Quaternion.AngleAxis((float) _dataKeys[CDM.hdg][sT], Vector3.up) 
+                * Quaternion.AngleAxis((float) _dataKeys[CDM.roll][sT], Vector3.forward);
             return true;
         }
 
-        float lerpRatio = (float) (time_ms - sK.t) / (eK.t - sK.t);
-        Vector3 ir = Vector3.Lerp(new Vector3(sK.pitch, sK.hdg, sK.roll), new Vector3(eK.pitch, eK.hdg, eK.roll), lerpRatio);
+        float lerpRatio = (float) (time_ms - sT) / (eT - sT);
+        Vector3 ir = Vector3.Lerp(new Vector3((float) _dataKeys[CDM.pitch][sT], (float) _dataKeys[CDM.hdg][sT], (float) _dataKeys[CDM.roll][sT]),
+            new Vector3((float) _dataKeys[CDM.pitch][eT], (float) _dataKeys[CDM.hdg][eT], (float) _dataKeys[CDM.roll][eT]), 
+            lerpRatio);
 
         evaluated = Quaternion.AngleAxis(ir.x, Vector3.right) * Quaternion.AngleAxis(ir.y, Vector3.up) * Quaternion.AngleAxis(ir.z, Vector3.forward);
         return true;
     }
 
     /// <summary>
-    /// Gives interpolated GPS coordinates and Unity-Based rotation at desired time-point
+    /// Gives interpolated GPS coordinates and Unity-Based rotation at desired time-point (use only when both location and rotation are logged uniformly)
     /// </summary>
     /// <param name="time_ms">Normalized time-point (in milliseconds) at which to evaluate</param>
-    /// <param name="evaluated">Evaluated location and rotation</param>
+    /// <param name="evaluated">Evaluated location (lon, lat, alt) and rotation (Unity-space quaternion)</param>
     /// <returns>Whether the evaluation succeeded (false if no data)</returns>
     public bool EvaluateTransform(int time_ms, out GeoTransform evaluated)
     {
@@ -270,27 +358,35 @@ public class DataProcessor : MonoBehaviour
         }
 
         time_ms += _startTimestamp;
-        int clamp_time_ms = Math.Clamp(time_ms, _dataKeys.First().Key, _dataKeys.Last().Key);
+        int clamp_time_ms = Math.Clamp(time_ms, _dataKeys[CDM.lat].First().Key, _dataKeys[CDM.lat].Last().Key);
 
-        var sK = _dataKeys.WeakPredecessor(clamp_time_ms).Value;
-        var eK = _dataKeys.WeakSuccessor(clamp_time_ms).Value;
+        // taking lon as base as GeoTransform sub-data is assumed uniform
+        int sT = _dataKeys[CDM.lon].WeakPredecessor(clamp_time_ms).Key;
+        int eT = _dataKeys[CDM.lon].WeakSuccessor(clamp_time_ms).Key;
 
         double3 p;
         Quaternion r;
 
-        if (sK.t == eK.t)
+        if (sT == eT)
         {
-            p = new double3(sK.lon, sK.lat, sK.alt);
-            r = Quaternion.AngleAxis(sK.pitch, Vector3.right) * Quaternion.AngleAxis(sK.hdg, Vector3.up) * Quaternion.AngleAxis(sK.roll, Vector3.forward); ;
+            p = new double3(_dataKeys[CDM.lon][sT], _dataKeys[CDM.lat][sT], _dataKeys[CDM.alt][sT]);
+            r = Quaternion.AngleAxis((float) _dataKeys[CDM.pitch][sT], Vector3.right)
+                * Quaternion.AngleAxis((float) _dataKeys[CDM.hdg][sT], Vector3.up) 
+                * Quaternion.AngleAxis((float) _dataKeys[CDM.roll][sT], Vector3.forward); ;
 
-            evaluated = new GeoTransform(sK.t - _startTimestamp, p, r);
+            evaluated = new GeoTransform(sT - _startTimestamp, p, r);
             return true;
         }
 
-        float lerpRatio = (float) (time_ms - sK.t) / (eK.t - sK.t);
+        float lerpRatio = (float) (time_ms - sT) / (eT - sT);
 
-        p = new double3(math.lerp(sK.lon, eK.lon, lerpRatio), math.lerp(sK.lat, eK.lat, lerpRatio), math.lerp(sK.alt, eK.alt, lerpRatio));
-        Vector3 ir = Vector3.Lerp(new Vector3(sK.pitch, sK.hdg, sK.roll), new Vector3(eK.pitch, eK.hdg, eK.roll), lerpRatio);
+        p = new double3(math.lerp(_dataKeys[CDM.lon][sT], _dataKeys[CDM.lon][eT], lerpRatio), 
+            math.lerp(_dataKeys[CDM.lat][sT], _dataKeys[CDM.lat][eT], lerpRatio), 
+            math.lerp(_dataKeys[CDM.alt][sT], _dataKeys[CDM.alt][eT], lerpRatio));
+        Vector3 ir = Vector3.Lerp(new Vector3((float) _dataKeys[CDM.pitch][sT], (float) _dataKeys[CDM.hdg][sT], (float) _dataKeys[CDM.roll][sT]),
+            new Vector3((float) _dataKeys[CDM.pitch][eT], (float) _dataKeys[CDM.hdg][eT], (float) _dataKeys[CDM.roll][eT]),
+            lerpRatio);
+
         r = Quaternion.AngleAxis(ir.x, Vector3.right) * Quaternion.AngleAxis(ir.y, Vector3.up) * Quaternion.AngleAxis(ir.z, Vector3.forward);
 
         evaluated = new GeoTransform(time_ms - _startTimestamp, p, r);
@@ -304,10 +400,10 @@ public class DataProcessor : MonoBehaviour
         Vector3[] result = new Vector3[_dataKeys.Count];
 
         int r = 0;
-        foreach (DataKeyframe k in _dataKeys.Values)
+        foreach (int t in _dataKeys[CDM.lon].Keys)
         {
             double3 unityPos = referenceGlobe.TransformEarthCenteredEarthFixedPositionToUnity(
-                CesiumWgs84Ellipsoid.LongitudeLatitudeHeightToEarthCenteredEarthFixed(new double3(k.lon, k.lat, k.alt)));
+                CesiumWgs84Ellipsoid.LongitudeLatitudeHeightToEarthCenteredEarthFixed(new double3(_dataKeys[CDM.lon][t], _dataKeys[CDM.lat][t], _dataKeys[CDM.alt][t])));
 
             result[r] = new Vector3((float) unityPos.x, (float) unityPos.y, (float) unityPos.z) - referencePosition;
             ++r;
@@ -320,9 +416,9 @@ public class DataProcessor : MonoBehaviour
     {
         if (!_hasData) return Vector3.zero;
 
-        DataKeyframe k = _dataKeys.Values.Last();
         double3 unityPos = referenceGlobe.TransformEarthCenteredEarthFixedPositionToUnity(
-                CesiumWgs84Ellipsoid.LongitudeLatitudeHeightToEarthCenteredEarthFixed(new double3(k.lon, k.lat, k.alt)));
+                CesiumWgs84Ellipsoid.LongitudeLatitudeHeightToEarthCenteredEarthFixed(
+                    new double3(_dataKeys[CDM.lon].Values.Last(), _dataKeys[CDM.lat].Values.Last(), _dataKeys[CDM.alt].Values.Last())));
 
         return new Vector3((float) unityPos.x, (float) unityPos.y, (float) unityPos.z) - referencePosition;
     }
@@ -334,9 +430,9 @@ public class DataProcessor : MonoBehaviour
         double3[] result = new double3[_dataKeys.Count];
 
         int r = 0;
-        foreach (DataKeyframe k in _dataKeys.Values)
+        foreach (int t in _dataKeys[CDM.lon].Keys)
         {
-            result[r] = new double3(k.lon, k.lat, k.alt);
+            result[r] = new double3(_dataKeys[CDM.lon][t], _dataKeys[CDM.lat][t], _dataKeys[CDM.alt][t]);
             ++r;
         }
 
@@ -347,8 +443,7 @@ public class DataProcessor : MonoBehaviour
     {
         if (!_hasData) return double3.zero;
 
-        DataKeyframe k = _dataKeys.Values.Last();
-        return new double3(k.lon, k.lat, k.alt);
+        return new double3(_dataKeys[CDM.lon].Values.Last(), _dataKeys[CDM.lat].Values.Last(), _dataKeys[CDM.alt].Values.Last());
     }
 
     /// <summary>
@@ -358,7 +453,7 @@ public class DataProcessor : MonoBehaviour
     /// <param name="category">Measurement category to evaluate</param>
     /// <param name="evaluated">Evaluated measurement</param>
     /// <returns>Whether the evaluation succeeded (false if no data)</returns>
-    public bool EvaluateMeasurement(int time_ms, MeasureMappings category, out double evaluated)
+    public bool EvaluateMeasurement(int time_ms, string category, out double evaluated)
     {
         if (!_hasData)
         {
@@ -366,21 +461,23 @@ public class DataProcessor : MonoBehaviour
             return false;
         }
 
+        int categoryID = DynamicDataMappings[category];
+
         time_ms += _startTimestamp;
-        int clamp_time_ms = Math.Clamp(time_ms, _dataKeys.First().Key, _dataKeys.Last().Key);
+        int clamp_time_ms = Math.Clamp(time_ms, _dataKeys[categoryID].First().Key, _dataKeys[categoryID].Last().Key);
 
-        var sK = _dataKeys.WeakPredecessor(clamp_time_ms).Value;
-        var eK = _dataKeys.WeakSuccessor(clamp_time_ms).Value;
+        int sT = _dataKeys[categoryID].WeakPredecessor(clamp_time_ms).Key;
+        int eT = _dataKeys[categoryID].WeakSuccessor(clamp_time_ms).Key;
 
-        if (sK.t == eK.t)
+        if (sT == eT)
         {
-            evaluated = GetMeasurement[category](sK);
+            evaluated = _dataKeys[categoryID][sT];
             return true;
         }
 
-        float lerpRatio = (float) (time_ms - sK.t) / (eK.t - sK.t);
+        float lerpRatio = (float) (time_ms - sT) / (eT - sT);
 
-        evaluated = math.lerp(GetMeasurement[category](sK), GetMeasurement[category](eK), lerpRatio);
+        evaluated = math.lerp(_dataKeys[categoryID][sT], _dataKeys[categoryID][eT], lerpRatio);
         return true;
     }
 
@@ -388,10 +485,10 @@ public class DataProcessor : MonoBehaviour
     {
         if (!_hasData) return new int[0];
 
-        int[] result = new int[_dataKeys.Keys.Count];
+        int[] result = new int[_dataKeys[CDM.t].Keys.Count];
 
         int i = 0;
-        foreach (int t in _dataKeys.Keys)
+        foreach (int t in _dataKeys[CDM.t].Values)
         {
             result[i] = t - _startTimestamp;
             ++i;
@@ -440,46 +537,37 @@ public static class CansatDataHelpers
         obj.positionGlobeFixed += offset;
     }
 
-    /// <summary>
-    /// Returns a specific measurement from a keyframe based on the provided category.
-    /// </summary>
-    public static readonly IReadOnlyDictionary<MeasureMappings, Func<DataKeyframe, double>> GetMeasurement = new Dictionary<MeasureMappings, Func<DataKeyframe, double>> {
-        { MeasureMappings.Temperature, k => k.temp },
-        { MeasureMappings.Humidity, k => k.hum },
-        { MeasureMappings.Pressure, k => k.pres },
-        { MeasureMappings.CO2, k => k.co2 },
-        { MeasureMappings.UV, k => k.uv },
-        { MeasureMappings.BarTemperature, k => k.btemp },
-        { MeasureMappings.BarAltitude, k => k.balt },
-        { MeasureMappings.Satellites, k => k.sats },
-        { MeasureMappings.FixGPS, k => k.fix },
-        { MeasureMappings.AmbientLightRaw, k => k.als },
-        { MeasureMappings.SolarVoltage, k => k.svolt },
-        { MeasureMappings.SolarCurrent, k => k.scurr },
-        { MeasureMappings.SolarPower, k => k.spwr },
-        { MeasureMappings.Temperature2, k => k.t2temp },
-        { MeasureMappings.PhotoRaw, k => k.lraw },
-        { MeasureMappings.PhotoVoltage, k => k.lvolt },
-        { MeasureMappings.StatusSD, k => k.sd },
-    };
+    public static Dictionary<string, int> DynamicDataMappings;
 
-    public static IReadOnlyDictionary<MeasureMappings, string> GetMeasureSuffix = new Dictionary<MeasureMappings, string> {
-        { MeasureMappings.Temperature, "°C" },
-        { MeasureMappings.Humidity, "%" },
-        { MeasureMappings.Pressure, "hPa" },
-        { MeasureMappings.CO2, "ppm" },
-        { MeasureMappings.UV, "index" },
-        { MeasureMappings.BarTemperature, "°C" },
-        { MeasureMappings.BarAltitude, "m" },
-        { MeasureMappings.Satellites, "" },
-        { MeasureMappings.FixGPS, "" },
-        { MeasureMappings.AmbientLightRaw, "raw" },
-        { MeasureMappings.SolarVoltage, "V" },
-        { MeasureMappings.SolarCurrent, "A" },
-        { MeasureMappings.SolarPower, "W" },
-        { MeasureMappings.Temperature2, "°C" },
-        { MeasureMappings.PhotoRaw, "raw" },
-        { MeasureMappings.PhotoVoltage, "V" },
-        { MeasureMappings.StatusSD, "" },
-    };
+    public static IReadOnlyDictionary<string, MeasureProperties> MeasureProperties;
+    public static void LoadMeasureProperties(TextAsset propertiesAsset)
+    {
+        try
+        {
+            MeasureProperties = JsonConvert.DeserializeObject<Dictionary<string, MeasureProperties>>(propertiesAsset.text);
+        }
+        catch
+        {
+            Debug.LogError("Failed to load measure properties.");
+        }
+    }
+    //= new Dictionary<string, string> {
+    //    { "t", "°C" },
+    //    { "hum", "%" },
+    //    { "pres", "hPa" },
+    //    { "co2", "ppm" },
+    //    { MeasureMappings.UV, "index" },
+    //    { MeasureMappings.BarTemperature, "°C" },
+    //    { MeasureMappings.BarAltitude, "m" },
+    //    { MeasureMappings.Satellites, "" },
+    //    { MeasureMappings.FixGPS, "" },
+    //    { MeasureMappings.AmbientLightRaw, "raw" },
+    //    { MeasureMappings.SolarVoltage, "V" },
+    //    { MeasureMappings.SolarCurrent, "A" },
+    //    { MeasureMappings.SolarPower, "W" },
+    //    { MeasureMappings.Temperature2, "°C" },
+    //    { MeasureMappings.PhotoRaw, "raw" },
+    //    { MeasureMappings.PhotoVoltage, "V" },
+    //    { MeasureMappings.StatusSD, "" },
+    //};
 }
