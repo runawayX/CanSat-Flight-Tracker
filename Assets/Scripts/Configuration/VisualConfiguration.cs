@@ -44,7 +44,7 @@ public class VisualConfiguration : ScriptableObject
     public TextAsset _visualizationProperties;
     public TextAsset _visualizationColors;
     public IReadOnlyDictionary<MeasureMappings, MeasureProperties> _visualizationPropertyMapping;
-    public IReadOnlyDictionary<MeasureMappings, Gradient> _visualizationColorMapping = new Dictionary<MeasureMappings, Gradient>();
+    public IReadOnlyDictionary<MeasureMappings, Gradient> _visualizationColorMapping;
 
     [Header("Configuration")]
     public MeasureMappings _activeMeasureCategory;

@@ -1,0 +1,121 @@
+{
+  "Temperature": {
+    "PrioritizeDefault": false,
+    "DefaultBounds": {
+      "x": -20.0,
+      "y": 60.0
+    }
+  },
+  "Humidity": {
+    "PrioritizeDefault": false,
+    "DefaultBounds": {
+      "x": 0.0,
+      "y": 100.0
+    }
+  },
+  "Pressure": {
+    "PrioritizeDefault": false,
+    "DefaultBounds": {
+      "x": 900.0,
+      "y": 1013.25
+    }
+  },
+  "CO2": {
+    "PrioritizeDefault": false,
+    "DefaultBounds": {
+      "x": 0,
+      "y": 5000
+    }
+  },
+  "UV": {
+    "PrioritizeDefault": false,
+    "DefaultBounds": {
+      "x": 0.0,
+      "y": 11.0
+    }
+  },
+  "BarTemperature": {
+    "PrioritizeDefault": false,
+    "DefaultBounds": {
+      "x": -40.0,
+      "y": 85.0
+    }
+  },
+  "BarAltitude": {
+    "PrioritizeDefault": false,
+    "DefaultBounds": {
+      "x": -500.0,
+      "y": 20000.0
+    }
+  },
+  "Satellites": {
+    "PrioritizeDefault": true,
+    "DefaultBounds": {
+      "x": 0,
+      "y": 12
+    }
+  },
+  "FixGPS": {
+    "PrioritizeDefault": true,
+    "DefaultBounds": {
+      "x": 0,
+      "y": 1
+    }
+  },
+  "AmbientLightRaw": {
+    "PrioritizeDefault": false,
+    "DefaultBounds": {
+      "x": 0,
+      "y": 65535
+    }
+  },
+  "SolarVoltage": {
+    "PrioritizeDefault": false,
+    "DefaultBounds": {
+      "x": 0.0,
+      "y": 12.0
+    }
+  },
+  "SolarCurrent": {
+    "PrioritizeDefault": false,
+    "DefaultBounds": {
+      "x": 0.0,
+      "y": 5000.0
+    }
+  },
+  "SolarPower": {
+    "PrioritizeDefault": false,
+    "DefaultBounds": {
+      "x": 0.0,
+      "y": 100.0
+    }
+  },
+  "Temperature2": {
+    "PrioritizeDefault": false,
+    "DefaultBounds": {
+      "x": -20.0,
+      "y": 60.0
+    }
+  },
+  "PhotoRaw": {
+    "PrioritizeDefault": false,
+    "DefaultBounds": {
+      "x": 0.0,
+      "y": 1023.0
+    }
+  },
+  "PhotoVoltage": {
+    "PrioritizeDefault": false,
+    "DefaultBounds": {
+      "x": 0.0,
+      "y": 5.0
+    }
+  },
+  "StatusSD": {
+    "PrioritizeDefault": true,
+    "DefaultBounds": {
+      "x": 0,
+      "y": 1
+    }
+  }
+}
