@@ -1,6 +1,7 @@
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Text;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -31,6 +32,8 @@ public class VisualConfiguration : ScriptableObject
 
     public string _highlightedNodeEvaluated;
 
+    private static readonly GradientAlphaKey[] _internalAlphaMultiplier = new GradientAlphaKey[2] { new(1, 0), new(1, 1) };
+
     private struct JsonColor
     {
         public float r;
@@ -54,16 +57,19 @@ public class VisualConfiguration : ScriptableObject
             Dictionary<string, Gradient> unityColorMap = new Dictionary<string, Gradient>();
             foreach (var mapping in deserializedColorMap)
             {
-                Gradient g = new Gradient() { colorKeys = new GradientColorKey[mapping.Value.Length], alphaKeys = new GradientAlphaKey[1] { new(1, 0) } };
+                Gradient g = new Gradient();
+                GradientColorKey[] colorPoints = new GradientColorKey[mapping.Value.Length];
+
                 float timeIncrement = 1f / (mapping.Value.Length - 1);
 
-                for (int i = 0; i < mapping.Value.Length; i++) g.colorKeys[i] = new(mapping.Value[i].ToColor(), timeIncrement * i);
+                for (int i = 0; i < mapping.Value.Length; i++) colorPoints[i] = new(mapping.Value[i].ToColor(), timeIncrement * i);
+
+                g.SetKeys(colorPoints, _internalAlphaMultiplier);
                 unityColorMap[mapping.Key] = g;
             }
 
             _visualizationColorMapping = unityColorMap;
-
-            Debug.Log("Successfully loaded data visualization customization.");
+            Debug.Log($"Successfully loaded data visualization customization.");
         }
         catch
         {
@@ -94,23 +100,11 @@ public class VisualConfiguration : ScriptableObject
             return Color.magenta;
         }
 
-        float lerpRatio = 0f;
+        float lerpRatio = CansatDataHelpers.GetMeasureInRange(value, category);
 
-        if (!double.IsNaN(value))
-        {
-            double2 bound = CansatDataHelpers.MeasurePropertyMap[category].GetBounds();
-            lerpRatio = Mathf.Clamp01((float) ((value - bound.x) / (bound.y - bound.x)));
-        }
+        if (_visualizationColorMapping.TryGetValue(category, out Gradient g)) return g.Evaluate(lerpRatio);
 
-        Debug.Log($"Color evaluation lerp {lerpRatio}");
-
-        if (_visualizationColorMapping.TryGetValue(category, out Gradient g))
-        {
-            return g.Evaluate(lerpRatio);
-        }
-        else
-        {
-            return _visualizationColorMapping["Default"].Evaluate(lerpRatio);
-        }
+        //Debug.LogWarning($"Fallback to default for \"{category}\" in color eval.");
+        return _visualizationColorMapping["Default"].Evaluate(lerpRatio);
     }
 }

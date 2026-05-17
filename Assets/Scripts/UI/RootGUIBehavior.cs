@@ -23,7 +23,7 @@ public class RootGUIBehavior : MonoBehaviour
     [SerializeField] private OrbitalCameraControls _cameraControls;
 
     [SerializeField] private VisualConfiguration _visualizationConfig;
-    [SerializeField] private DatapointVisualizer _visualization;
+    [SerializeField] private WorldspaceDataPlotter _visualization;
 
     [Header("Components")]
     [SerializeField] private UIDocument _ui;
@@ -118,8 +118,8 @@ public class RootGUIBehavior : MonoBehaviour
 
     private void FixedUpdate()
     {
-        _noDataAlert.visible = !_dataProcessor._hasData;
-        _serialReadAlert.visible = _dataProcessor.IsListeningSerial();
+        _noDataAlert.style.display = _dataProcessor._hasData ? DisplayStyle.None : DisplayStyle.Flex;
+        _serialReadAlert.style.display = _dataProcessor.IsListeningSerial() ? DisplayStyle.Flex : DisplayStyle.None;
 
         if (_packetPingTime > 0f) _packetPingTime -= Time.fixedDeltaTime;
         _packetPing.tintColor = new Color(1f, 1f, 1f, _packetPingTime);
@@ -140,7 +140,7 @@ public class RootGUIBehavior : MonoBehaviour
         _settingsView.SetEnabled(true);
         _settingsView.visible = true;
 
-        if (_cameraControls != null) _cameraControls.SetInputFreeze(0, true);
+        if (OrbitalCameraControls.PriorityInstance != null) OrbitalCameraControls.PriorityInstance.SetInputFreeze(0, true);
 
         _visualizationConfig._highlightedNodeLock = false;
     }
@@ -152,7 +152,7 @@ public class RootGUIBehavior : MonoBehaviour
         _settingsView.SetEnabled(!previous);
         _settingsView.visible = !previous;
 
-        if (_cameraControls != null) _cameraControls.SetInputFreeze(0, !previous);
+        if (OrbitalCameraControls.PriorityInstance != null) OrbitalCameraControls.PriorityInstance.SetInputFreeze(0, !previous);
 
         if (!previous) _visualizationConfig._highlightedNodeLock = false;
     }
@@ -162,7 +162,7 @@ public class RootGUIBehavior : MonoBehaviour
         _settingsView.SetEnabled(false);
         _settingsView.visible = false;
 
-        if (_cameraControls != null) _cameraControls.SetInputFreeze(0, false);
+        if (OrbitalCameraControls.PriorityInstance != null) OrbitalCameraControls.PriorityInstance.SetInputFreeze(0, false);
     }
 
     // File

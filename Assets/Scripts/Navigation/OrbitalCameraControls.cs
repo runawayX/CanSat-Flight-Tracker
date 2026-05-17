@@ -10,6 +10,8 @@ using static CansatDataHelpers;
 
 public class OrbitalCameraControls : MonoBehaviour
 {
+    public static OrbitalCameraControls PriorityInstance { get; private set; } = null;
+
     [Header("Configuration")]
     public float _moveSpeed;
     public float _slowMultiplierSpeed;
@@ -87,6 +89,8 @@ public class OrbitalCameraControls : MonoBehaviour
 
     private void Awake()
     {
+        if (PriorityInstance == null) PriorityInstance = this;
+
         // Bind actions
         _actionPan = _pan.action;
         _actionMoveOrbit = _moveOrbit.action;
@@ -147,6 +151,11 @@ public class OrbitalCameraControls : MonoBehaviour
         // Delinking
         _actionRelock.performed -= OnRelockPressed;
         _actionMoveOrbit.performed -= OnMoveAnyPressed;
+    }
+
+    private void OnDestroy()
+    {
+        if (PriorityInstance == this) PriorityInstance = null;
     }
 
     private void Update()

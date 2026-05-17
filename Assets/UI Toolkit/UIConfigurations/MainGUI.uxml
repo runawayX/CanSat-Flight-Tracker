@@ -1,15 +1,15 @@
 <ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
-    <ui:VisualElement name="AlertBox" style="flex-grow: 1; position: absolute; width: 25%; min-height: 10%; max-height: 100%; align-content: center; display: flex; visibility: visible;">
-        <ui:VisualElement name="EmptyDataIdentifier" style="flex-grow: 1; aspect-ratio: auto; height: 40px; width: 100%; flex-direction: row; max-width: none; max-height: none; position: relative; top: auto; align-content: auto;">
+    <ui:VisualElement name="AlertBox" style="flex-grow: 1; position: absolute; width: 25%; min-height: 10%; max-height: 100%; align-content: center; display: flex; visibility: visible; justify-content: space-evenly;">
+        <ui:VisualElement name="EmptyDataIdentifier" style="flex-grow: 1; aspect-ratio: auto; height: 40px; width: 100%; flex-direction: row; max-width: none; max-height: none; position: relative; top: auto; align-content: auto; display: flex; visibility: visible;">
             <ui:Label text="No data." name="SerialText" style="color: rgb(255, 255, 255); justify-content: flex-start; -unity-text-align: middle-left; left: 0%; margin-left: 4px;"/>
         </ui:VisualElement>
-        <ui:VisualElement name="SerialListenIdentifier" enabled="true" style="flex-grow: 1; aspect-ratio: auto; height: 40px; width: 100%; flex-direction: row; max-width: none; max-height: none; position: relative; top: auto; align-self: auto; align-content: auto;">
+        <ui:VisualElement name="SerialListenIdentifier" enabled="true" style="flex-grow: 1; aspect-ratio: auto; height: 40px; width: 100%; flex-direction: row; max-width: none; max-height: none; position: relative; top: auto; align-self: auto; align-content: auto; display: flex;">
             <ui:Image source="project://database/Assets/Sprites/SerialIdentifier.png?fileID=2800000&amp;guid=09800c74457f09e4da73379c1a8f119a&amp;type=3#SerialIdentifier" name="SerialIcon" style="aspect-ratio: 1;"/>
             <ui:Label text="Listening on serial port." name="SerialText" style="color: rgb(255, 255, 255); justify-content: flex-start; -unity-text-align: middle-left;"/>
         </ui:VisualElement>
         <ui:Image name="PacketPing" usage-hints="DynamicColor" tint-color="rgb(255, 255, 255)" source="project://database/Assets/Sprites/PacketPingIdentifier.png?fileID=2800000&amp;guid=f3578b68ea770b84790637e91ab79a85&amp;type=3#PacketPingIdentifier" style="height: 40px; width: 40px; background-image: none; -unity-background-image-tint-color: rgb(255, 255, 255);"/>
     </ui:VisualElement>
-    <ui:VisualElement name="PlaybackViewer" style="flex-grow: 1; bottom: 0%; width: 75%; left: 12.5%; right: 12.5%; height: 20%; padding-top: 5px; padding-right: 5px; padding-bottom: 5px; padding-left: 5px; top: 80%; position: absolute; flex-direction: column; flex-wrap: nowrap;">
+    <ui:VisualElement name="PlaybackViewer" style="flex-grow: 1; bottom: 5%; width: 75%; left: 12.5%; right: 12.5%; height: 20%; padding-top: 5px; padding-right: 5px; padding-bottom: 5px; padding-left: 5px; top: auto; position: absolute; flex-direction: column; flex-wrap: nowrap;">
         <ui:VisualElement name="PlayControls" style="flex-grow: 1; flex-direction: row; justify-content: center; align-self: auto; align-items: center;">
             <ui:ToggleButtonGroup label="" name="PlayState" value="00100" focusable="false" is-multiple-selection="false" style="flex-wrap: nowrap; flex-direction: row; width: auto; left: auto; right: auto; aspect-ratio: 5; margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; padding-left: 0; height: 100%; justify-content: space-between; align-self: center; align-content: center;">
                 <ui:Button text="&lt;&lt;" name="FastRewind" style="aspect-ratio: 1; height: 100%; margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; align-self: center;"/>
@@ -19,7 +19,7 @@
                 <ui:Button text="&gt;&gt;" name="FastForward" style="aspect-ratio: 1; height: 100%; width: auto; margin-right: 0; margin-top: 0; margin-bottom: 0; margin-left: 0; align-self: center;"/>
             </ui:ToggleButtonGroup>
             <ui:Button text="&gt;|" focusable="false" name="SnapToFront"/>
-            <ui:IntegerField label="Fast Speed" value="2" name="PlaySpeed" max-length="3" placeholder-text="2" keyboard-type="Default" tooltip="Speed Multiplier" style="aspect-ratio: auto; right: auto; width: auto; height: 80%; margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; -unity-text-align: middle-center;">
+            <ui:IntegerField label="Fast Speed" value="2" name="PlaySpeed" max-length="3" placeholder-text="2" keyboard-type="Default" tooltip="Speed Multiplier" focusable="false" style="aspect-ratio: auto; right: auto; width: auto; height: 80%; margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; -unity-text-align: middle-center;">
                 <Bindings>
                     <ui:DataBinding property="value" data-source-path="_fastMultiplier" data-source="project://database/Assets/Runtime/PlaybackCfg.asset?fileID=11400000&amp;guid=c6cf1da1821b0174980c8fbe004b0c51&amp;type=2#PlaybackCfg" binding-mode="TwoWay"/>
                 </Bindings>

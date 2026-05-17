@@ -1,4 +1,32 @@
 {
+  "t": {
+    "DisplayName": "Time",
+    "DisplaySuffix": "ms",
+    "PrioritizeDefault": false,
+    "DefaultMin": 0,
+    "DefaultMax": 0
+  },
+  "lon": {
+    "DisplayName": "Longitude",
+    "DisplaySuffix": "°",
+    "PrioritizeDefault": false,
+    "DefaultMin": 0.0,
+    "DefaultMax": 0.0
+  },
+  "lat": {
+    "DisplayName": "Latitude",
+    "DisplaySuffix": "°",
+    "PrioritizeDefault": false,
+    "DefaultMin": 0.0,
+    "DefaultMax": 0.0
+  },
+  "alt": {
+    "DisplayName": "Altitude",
+    "DisplaySuffix": "m",
+    "PrioritizeDefault": false,
+    "DefaultMin": 0.0,
+    "DefaultMax": 1000.0
+  },
   "temp": {
     "DisplayName": "Temperature (SCD41)",
     "DisplaySuffix": "°C",

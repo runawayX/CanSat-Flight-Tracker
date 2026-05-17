@@ -29,6 +29,8 @@ public class InWorldInteractionHandler : MonoBehaviour
     private InputAction _actionClick;
     private InputAction _actionDoubleClick;
 
+    private bool _isOverUI = false;
+
     private void Awake()
     {
         _actionMousePos = _mousePos.action;
@@ -38,6 +40,11 @@ public class InWorldInteractionHandler : MonoBehaviour
 
         _view = Camera.main;
         _orbiter = gameObject.GetComponent<OrbitalCameraControls>();
+    }
+
+    private void Update()
+    {
+        _isOverUI = EventSystem.current.IsPointerOverGameObject();
     }
 
     private void FixedUpdate()
@@ -95,15 +102,17 @@ public class InWorldInteractionHandler : MonoBehaviour
 
     public void OnClickPressed(InputAction.CallbackContext c)
     {
-        if (EventSystem.current.IsPointerOverGameObject()) return;
+        if (_isOverUI) return;
 
         if (_visualization._highlightedNodeLock) _visualization._highlightedNodeLock = false;
         else if (_visualization._highlightedNode != null) _visualization._highlightedNodeLock = true;
+
+        _orbiter.SetInputFreeze(1, _visualization._highlightedNodeLock);
     }
 
     public void OnDoubleClickPressed(InputAction.CallbackContext c)
     {
-        if (EventSystem.current.IsPointerOverGameObject() || !TraceClick(out RaycastHit trace)) return;
+        if (_isOverUI || !TraceClick(out RaycastHit trace)) return;
 
         if (trace.collider.gameObject.CompareTag("Focusable")) _orbiter.SelectLockTarget(trace.collider.gameObject.transform);
         else if (_visualization._highlightedNode != null) _playback.JumpTime(_visualization._highlightedNode._time_ms);

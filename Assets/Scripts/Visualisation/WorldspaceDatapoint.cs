@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class WorldspaceDatapoint : MonoBehaviour
 {
-    public DatapointVisualizer _parent;
+    public WorldspaceDataPlotter _parent;
 
     [Header("Data")]
     public double3 _location;
@@ -23,7 +23,9 @@ public class WorldspaceDatapoint : MonoBehaviour
     {
         if (_parent == null) return;
         _parent._data.EvaluateMeasurement(_time_ms, _parent._visualization._activeMeasureCategory, out _evaluatedData);
-        _material.color = _parent.ActiveCategoryEvaluateDataColor(_evaluatedData);
+        _material.color = _parent._visualization.EvaluateDataColor(
+            CansatDataHelpers.InverseDynamicDataMappings()[_parent._visualization._activeMeasureCategory], 
+            _evaluatedData);
     }
 
     public void PushData()

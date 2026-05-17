@@ -9,7 +9,7 @@ using UnityEngine;
 using UnityEngine.Events;
 using Color = UnityEngine.Color;
 
-public class DatapointVisualizer : MonoBehaviour
+public class WorldspaceDataPlotter : MonoBehaviour
 {
     [Header("Components")]
     [SerializeField] private CesiumGeoreference _map;
@@ -53,6 +53,7 @@ public class DatapointVisualizer : MonoBehaviour
     public void AppendDatapoint(bool incremental)
     {
         if (!incremental) return;
+        if (_dataPlot == null) _dataPlot = new List<WorldspaceDatapoint>();
 
         Vector3 instancePos = _data.GetLastPositionUnitySpaceRelative(_map, transform.position);
         //if (Physics.CheckSphere(instancePos, _minDatapointProximity, _datapointLayer, QueryTriggerInteraction.Collide)) return;
@@ -74,11 +75,14 @@ public class DatapointVisualizer : MonoBehaviour
 
     public void GenerateDataPlot()
     {
+        ClearDataPlot();
+        _dataPlot = new List<WorldspaceDatapoint>();
+
         if (_data.EvaluateLocationGPS(0, out double3 origin))
         {
             _transformGPS.longitudeLatitudeHeight = origin;
 
-            int[] timeStamps = _data.GetNormalizedKeyTimes();
+            int[] timeStamps = _data.GetNormalizedBaseTimes();
             double3[] locations = _data.GetTravelPathGeo();
 
             //StringBuilder debugString = new StringBuilder("Timestamps:\n");
@@ -115,14 +119,6 @@ public class DatapointVisualizer : MonoBehaviour
         }
     }
 
-    public Color ActiveCategoryEvaluateDataColor(double data)
-    {
-        //int category = Math.Min((int) _visualization._activeMeasureCategory, _visualization._categoryColors.Count - 1);
-        //float lerpRatio = Mathf.Clamp01((float)((data - _visualization._categoryBounds[category].x) / _visualization._categoryBounds[category].y));
-
-        return _visualization.EvaluateDataColor(CansatDataHelpers.InverseDynamicDataMappings()[_visualization._activeMeasureCategory], data);
-    }
-
     public void RefreshDataPlot()
     {
         foreach (WorldspaceDatapoint dp in _dataPlot) dp.RefreshData();
@@ -130,6 +126,9 @@ public class DatapointVisualizer : MonoBehaviour
 
     public void ClearDataPlot()
     {
+        if (_dataPlot != null)
         foreach (WorldspaceDatapoint dp in _dataPlot) Destroy(dp.gameObject);
+
+        _dataPlot = null;
     }
 }

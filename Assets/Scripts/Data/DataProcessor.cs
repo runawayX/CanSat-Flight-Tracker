@@ -7,6 +7,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using TMPro;
+using Unity.Android.Gradle.Manifest;
 using Unity.Mathematics;
 using UnityEditor;
 using UnityEngine;
@@ -15,89 +16,17 @@ using UnityEngine.UI;
 using UnityEngine.UIElements;
 
 using static CansatDataHelpers;
+using static UnityEngine.Rendering.DebugUI;
 
-public readonly struct GeoTransform
+public readonly struct MeasureEvaluation
 {
-    public readonly int normalizedTime;
-    public readonly double3 lonLatAlt;
-    public readonly Quaternion localRotation;
+    public readonly int time;
+    public readonly double value;
 
-    public static GeoTransform identity = new GeoTransform(-1, double3.zero, Quaternion.identity);
-
-    public GeoTransform(int normalizedTime, double3 lonLatAlt, Quaternion localRotation)
+    public MeasureEvaluation(int time, double value)
     {
-        this.normalizedTime = normalizedTime;
-        this.lonLatAlt = lonLatAlt;
-        this.localRotation = localRotation;
-    }
-}
-
-/// <summary>
-/// Common Data Mappings
-/// </summary>
-public struct CDM
-{
-    public static readonly int Mapped = 7; //
-
-    public static int t = -1;
-    public static int lat = -1, lon = -1, alt = -1;
-    public static int hdg = -1, pitch = -1, roll = -1;
-
-    public static void Remap(string key, int index)
-    {
-        switch (key)
-        {
-            case "t": t = index; break;
-            case "lat": lat = index; break;
-            case "lon": lon = index; break;
-            case "alt": alt = index; break;
-            case "hdg": hdg = index; break;
-            case "pitch": pitch = index; break;
-            case "roll": roll = index; break;
-        }
-    }
-}
-
-[System.Serializable]
-public class MeasureProperties
-{
-    [JsonProperty("DisplayName")] public string _name { get; set; }
-    [JsonProperty("DisplaySuffix")] public string _suffix { get; set; }
-    [JsonProperty("PrioritizeDefault")] public bool _prioritizeDefault { get; set; }
-    [JsonProperty("DefaultMin")] public double _defaultMin { get; set; }
-    [JsonProperty("DefaultMax")] public double _defaultMax { get; set; }
-    [JsonIgnore] public double2 _runtimeBounds;
-    [JsonIgnore] public bool _hasRuntimeBounds;
-
-    public MeasureProperties(double2 defaultBounds, bool prioritizeDefault)
-    {
-        _name = null;
-        _suffix = "";
-
-        _prioritizeDefault = prioritizeDefault;
-        _defaultMin = defaultBounds.x;
-        _defaultMax = defaultBounds.y;
-
-        _runtimeBounds = _prioritizeDefault ? defaultBounds : double2.zero;
-        _hasRuntimeBounds = false;
-    }
-
-    public double2 GetBounds()
-    {
-        if (_prioritizeDefault || !_hasRuntimeBounds) return new double2(_defaultMin, _defaultMax);
-        else return _runtimeBounds;
-    }
-
-    public void CheckRuntimeBounds(double value)
-    {
-        if (_prioritizeDefault) return;
-
-        if (_hasRuntimeBounds) _runtimeBounds = new double2(math.min(_runtimeBounds.x, value), math.max(_runtimeBounds.y, value));
-        else
-        {
-            _runtimeBounds = value;
-            _hasRuntimeBounds = true;
-        }
+        this.time = time;
+        this.value = value;
     }
 }
 
@@ -214,6 +143,12 @@ public class DataProcessor : MonoBehaviour
         _hasData = false;
         _dataKeys.Clear();
 
+        DynamicDataMappings.Clear();
+        CDM.Clear();
+        _hasUpdatedMappings = true;
+
+        ResetMeasureBounds();
+
         _onClearDatabase.Invoke();
     }
     #endregion
@@ -237,8 +172,6 @@ public class DataProcessor : MonoBehaviour
 
                 _dataKeys.Add(new TreeDictionary<int, double>());
                 _hasUpdatedMappings = true;
-                _hasUpdatedUncommonMappings = true;
-                _hasUpdatedNamedMappings = true;
             }
 
             _dataKeys[DynamicDataMappings[sub.Key]].Add(t, sub.Value);
@@ -291,6 +224,13 @@ public class DataProcessor : MonoBehaviour
             return false;
         }
 
+        if (!CDM.IsValidGPS())
+        {
+            Debug.LogWarning("Cannot evaluate GPS location - missing/invalid Longitude, Latitude or Altitude components.");
+            evaluated = double3.zero;
+            return false;
+        }
+
         time_ms += _startTimestamp;
         int clamp_time_ms = Math.Clamp(time_ms, _dataKeys[CDM.lat].First().Key, _dataKeys[CDM.lat].Last().Key);
 
@@ -333,6 +273,13 @@ public class DataProcessor : MonoBehaviour
             return false;
         }
 
+        if (!CDM.IsValidRotation())
+        {
+            Debug.LogWarning("Cannot evaluate Rotation - missing/invalid Heading, Pitch or Roll components.");
+            evaluated = Quaternion.identity;
+            return false;
+        }
+
         time_ms += _startTimestamp;
         int clamp_time_ms = Math.Clamp(time_ms, _dataKeys[CDM.hdg].First().Key, _dataKeys[CDM.hdg].Last().Key);
 
@@ -371,6 +318,13 @@ public class DataProcessor : MonoBehaviour
             return false;
         }
 
+        if (!CDM.IsValidGPS())
+        {
+            Debug.LogWarning("Cannot evaluate GeoTransform - missing/invalid data.");
+            evaluated = GeoTransform.identity;
+            return false;
+        }
+
         time_ms += _startTimestamp;
         int clamp_time_ms = Math.Clamp(time_ms, _dataKeys[CDM.lon].First().Key, _dataKeys[CDM.lon].Last().Key);
 
@@ -378,15 +332,15 @@ public class DataProcessor : MonoBehaviour
         int sT = _dataKeys[CDM.lon].WeakPredecessor(clamp_time_ms).Key;
         int eT = _dataKeys[CDM.lon].WeakSuccessor(clamp_time_ms).Key;
 
-        double3 p;
-        Quaternion r;
+        double3 p = double3.zero;
+        Quaternion r = Quaternion.identity;
 
         if (sT == eT)
         {
             p = new double3(_dataKeys[CDM.lon][sT], _dataKeys[CDM.lat][sT], _dataKeys[CDM.alt][sT]);
-            r = Quaternion.AngleAxis((float) _dataKeys[CDM.pitch][sT], Vector3.right)
+            if (CDM.IsValidRotation()) r = Quaternion.AngleAxis((float) _dataKeys[CDM.pitch][sT], Vector3.right)
                 * Quaternion.AngleAxis((float) _dataKeys[CDM.hdg][sT], Vector3.up) 
-                * Quaternion.AngleAxis((float) _dataKeys[CDM.roll][sT], Vector3.forward); ;
+                * Quaternion.AngleAxis((float) _dataKeys[CDM.roll][sT], Vector3.forward);
 
             evaluated = new GeoTransform(sT - _startTimestamp, p, r);
             return true;
@@ -394,14 +348,18 @@ public class DataProcessor : MonoBehaviour
 
         float lerpRatio = (float) (time_ms - sT) / (eT - sT);
 
-        p = new double3(math.lerp(_dataKeys[CDM.lon][sT], _dataKeys[CDM.lon][eT], lerpRatio), 
-            math.lerp(_dataKeys[CDM.lat][sT], _dataKeys[CDM.lat][eT], lerpRatio), 
+        p = new double3(math.lerp(_dataKeys[CDM.lon][sT], _dataKeys[CDM.lon][eT], lerpRatio),
+            math.lerp(_dataKeys[CDM.lat][sT], _dataKeys[CDM.lat][eT], lerpRatio),
             math.lerp(_dataKeys[CDM.alt][sT], _dataKeys[CDM.alt][eT], lerpRatio));
-        Vector3 ir = Vector3.Lerp(new Vector3((float) _dataKeys[CDM.pitch][sT], (float) _dataKeys[CDM.hdg][sT], (float) _dataKeys[CDM.roll][sT]),
-            new Vector3((float) _dataKeys[CDM.pitch][eT], (float) _dataKeys[CDM.hdg][eT], (float) _dataKeys[CDM.roll][eT]),
-            lerpRatio);
 
-        r = Quaternion.AngleAxis(ir.x, Vector3.right) * Quaternion.AngleAxis(ir.y, Vector3.up) * Quaternion.AngleAxis(ir.z, Vector3.forward);
+        if (CDM.IsValidRotation())
+        {
+            Vector3 ir = Vector3.Lerp(new Vector3((float) _dataKeys[CDM.pitch][sT], (float) _dataKeys[CDM.hdg][sT], (float) _dataKeys[CDM.roll][sT]),
+                new Vector3((float) _dataKeys[CDM.pitch][eT], (float) _dataKeys[CDM.hdg][eT], (float) _dataKeys[CDM.roll][eT]),
+                lerpRatio);
+
+            r = Quaternion.AngleAxis(ir.x, Vector3.right) * Quaternion.AngleAxis(ir.y, Vector3.up) * Quaternion.AngleAxis(ir.z, Vector3.forward);
+        }
 
         evaluated = new GeoTransform(time_ms - _startTimestamp, p, r);
         return true;
@@ -441,7 +399,7 @@ public class DataProcessor : MonoBehaviour
     {
         if (!_hasData) return new double3[0];
 
-        double3[] result = new double3[_dataKeys.Count];
+        double3[] result = new double3[_dataKeys[CDM.lon].Count];
 
         int r = 0;
         foreach (int t in _dataKeys[CDM.lon].Keys)
@@ -490,12 +448,16 @@ public class DataProcessor : MonoBehaviour
         if (sT == eT)
         {
             evaluated = _dataKeys[categoryID][sT];
+
+            if (double.IsNaN(evaluated)) return false;
             return true;
         }
 
         float lerpRatio = (float) (time_ms - sT) / (eT - sT);
 
         evaluated = math.lerp(_dataKeys[categoryID][sT], _dataKeys[categoryID][eT], lerpRatio);
+
+        if (double.IsNaN(evaluated)) return false;
         return true;
     }
 
@@ -523,16 +485,45 @@ public class DataProcessor : MonoBehaviour
         if (sT == eT)
         {
             evaluated = _dataKeys[category][sT];
+
+            if (double.IsNaN(evaluated)) return false;
             return true;
         }
 
         float lerpRatio = (float) (time_ms - sT) / (eT - sT);
 
         evaluated = math.lerp(_dataKeys[category][sT], _dataKeys[category][eT], lerpRatio);
+
+        if (double.IsNaN(evaluated)) return false;
         return true;
     }
 
-    public int[] GetNormalizedKeyTimes()
+    /// <summary>
+    /// Gives all normalized timestamps and values of a selected category
+    /// </summary>
+    /// <param name="category">The measurement category to get the keyframes of</param>
+    /// <returns></returns>
+    public MeasureEvaluation[] GetAllMeasureKeys(string category)
+    {
+        if (!_hasData) return new MeasureEvaluation[0];
+
+        MeasureEvaluation[] result = new MeasureEvaluation[_dataKeys[DynamicDataMappings[category]].Keys.Count];
+
+        int i = 0;
+        foreach (var t in _dataKeys[DynamicDataMappings[category]])
+        {
+            result[i] = new MeasureEvaluation(t.Key - _startTimestamp, double.IsNaN(t.Value) ? 0 : t.Value);
+            ++i;
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Gives all master timestamps (for all packets)
+    /// </summary>
+    /// <returns></returns>
+    public int[] GetNormalizedBaseTimes()
     {
         if (!_hasData) return new int[0];
 
@@ -547,154 +538,26 @@ public class DataProcessor : MonoBehaviour
 
         return result;
     }
-    #endregion
-}
-
-public static class CansatDataHelpers
-{
-    public static int LerpInt(int start, int end, float ratio)
-    {
-        return start + (int) Math.Round((end - start) * ratio);
-    }
-
-    public static double3 LerpDouble3(double3 start, double3 end, float ratio)
-    {
-        return start + (end - start) * ratio;
-    }
 
     /// <summary>
-    /// Moves the provided globe-anchored transform by a meter-based offset north/east
+    /// Gives all timestamps of measurement of a specific category
     /// </summary>
-    /// <param name="obj">Globe-anchored Transform to move</param>
-    /// <param name="v">Meter-based offset</param>
-    public static void TranslateGPS(CesiumGlobeAnchor obj, Vector2 v)
+    /// <param name="category">Measurement category of which to get the keyframe times of</param>
+    /// <returns></returns>
+    public int[] GetNormalizedMeasureTimes(string category)
     {
-        double longitudeRad = math.radians(obj.longitudeLatitudeHeight.x);
-        double latitudeRad = math.radians(obj.longitudeLatitudeHeight.y);
+        if (!_hasData) return new int[0];
 
-        // east
-        double3 east = new double3(
-            -math.sin(longitudeRad),
-             math.cos(longitudeRad),
-             0.0);
+        int[] result = new int[_dataKeys[DynamicDataMappings[category]].Keys.Count];
 
-        // north
-        double3 north = new double3(
-            -math.sin(latitudeRad) * math.cos(longitudeRad),
-            -math.sin(latitudeRad) * math.sin(longitudeRad),
-             math.cos(latitudeRad));
-
-        double3 offset = east * v.x + north * v.y;
-        obj.positionGlobeFixed += offset;
-    }
-
-    public static Dictionary<string, int> DynamicDataMappings;
-
-    public static bool _hasUpdatedMappings = true;
-    private static List<string> _inverseMappingsCache;
-
-    public static bool _hasUpdatedUncommonMappings = true;
-    private static List<string> _inverseUncommonMappingsCache;
-
-    public static bool _hasUpdatedNamedMappings = true;
-    private static List<string> _inverseNamedMappingsCache;
-
-    public static List<string> InverseDynamicDataMappings()
-    {
-        if (!_hasUpdatedMappings) return _inverseMappingsCache;
-
-        string[] tempCategories = new string[DynamicDataMappings.Count];
-        foreach (var mapping in DynamicDataMappings)
+        int i = 0;
+        foreach (int t in _dataKeys[DynamicDataMappings[category]].Values)
         {
-            tempCategories[mapping.Value] = mapping.Key;
+            result[i] = t - _startTimestamp;
+            ++i;
         }
 
-        _inverseMappingsCache = new List<string>(tempCategories);
-
-        _hasUpdatedMappings = false;
-        return _inverseMappingsCache;
+        return result;
     }
-
-    public static List<string> InverseUncommonDataMappings()
-    {
-        if (!_hasUpdatedUncommonMappings) return _inverseUncommonMappingsCache;
-
-        string[] tempCategories = new string[DynamicDataMappings.Count - CDM.Mapped];
-
-        int id = 0;
-        foreach (var mapping in DynamicDataMappings)
-        {
-            // skipping internal CDM
-            if (mapping.Key == "t"
-                || mapping.Key == "lat"
-                || mapping.Key == "lon"
-                || mapping.Key == "alt"
-                || mapping.Key == "hdg"
-                || mapping.Key == "pitch"
-                || mapping.Key == "roll")
-                continue;
-
-            tempCategories[id] = mapping.Key;
-            ++id;
-        }
-
-        _inverseUncommonMappingsCache = new List<string>(tempCategories);
-
-        _hasUpdatedUncommonMappings = false;
-        return _inverseUncommonMappingsCache;
-    }
-
-    public static int RemapFromUncommon(int uCategory)
-    {
-        Debug.Log($"Remapped {InverseNamedDataMappings()[uCategory]}/{InverseUncommonDataMappings()[uCategory]} ({uCategory}) to {DynamicDataMappings[InverseUncommonDataMappings()[uCategory]]} ({InverseDynamicDataMappings()[DynamicDataMappings[InverseUncommonDataMappings()[uCategory]]]})");
-        return DynamicDataMappings[InverseUncommonDataMappings()[uCategory]];
-    }
-
-    public static List<string> InverseNamedDataMappings()
-    {
-        if (!_hasUpdatedNamedMappings) return _inverseNamedMappingsCache;
-
-        string[] tempCategories = new string[DynamicDataMappings.Count - CDM.Mapped];
-        
-        int id = 0;
-        foreach (var mapping in DynamicDataMappings)
-        {
-            // skipping internal CDM
-            if (mapping.Key == "t" 
-                || mapping.Key == "lat" 
-                || mapping.Key == "lon" 
-                || mapping.Key == "alt" 
-                || mapping.Key == "hdg" 
-                || mapping.Key == "pitch" 
-                || mapping.Key == "roll")
-                continue;
-
-            tempCategories[id] = MeasurePropertyMap[mapping.Key]._name ?? mapping.Key;
-            ++id;
-        }
-
-        _inverseNamedMappingsCache = new List<string>(tempCategories);
-
-        _hasUpdatedNamedMappings = false;
-        return _inverseNamedMappingsCache;
-    }
-
-    public static Dictionary<string, MeasureProperties> MeasurePropertyMap;
-    public static void LoadMeasureProperties(TextAsset propertiesAsset)
-    {
-        try
-        {
-            MeasurePropertyMap = JsonConvert.DeserializeObject<Dictionary<string, MeasureProperties>>(propertiesAsset.text);
-        }
-        catch (Exception e)
-        {
-            MeasurePropertyMap = new Dictionary<string, MeasureProperties>();
-            Debug.LogError($"Failed to load measure properties ({e.Message})");
-        }
-    }
-
-    public static readonly JsonSerializerSettings SerializeConfig = new JsonSerializerSettings() {
-        FloatParseHandling = FloatParseHandling.Double, 
-        FloatFormatHandling = FloatFormatHandling.String
-    };
+    #endregion
 }
