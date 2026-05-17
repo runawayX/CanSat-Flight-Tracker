@@ -130,7 +130,7 @@
                 <ui:DataBinding property="text" data-source-path="_highlightedNodeTime" data-source="project://database/Assets/Runtime/VisualCfg.asset?fileID=11400000&amp;guid=d7d39dac5d255c045b10817776f681a7&amp;type=2#VisualCfg" binding-mode="ToTarget"/>
             </Bindings>
         </ui:Label>
-        <ui:Label text="Label" name="WorldHoverData" style="color: rgb(255, 255, 255);">
+        <ui:Label text="Label" name="WorldHoverData" style="color: rgb(255, 255, 255); flex-wrap: nowrap; white-space: normal;">
             <Bindings>
                 <ui:DataBinding property="text" data-source-path="_highlightedNodeEvaluated" data-source="project://database/Assets/Runtime/VisualCfg.asset?fileID=11400000&amp;guid=d7d39dac5d255c045b10817776f681a7&amp;type=2#VisualCfg" binding-mode="ToTarget"/>
             </Bindings>
@@ -139,10 +139,11 @@
             <ui:DataBinding property="style.left" data-source-path="_highlightInfoPosition.x" data-source="project://database/Assets/Runtime/VisualCfg.asset?fileID=11400000&amp;guid=d7d39dac5d255c045b10817776f681a7&amp;type=2#VisualCfg" binding-mode="ToTarget"/>
             <ui:DataBinding property="style.bottom" data-source-path="_highlightInfoPosition.y" data-source="project://database/Assets/Runtime/VisualCfg.asset?fileID=11400000&amp;guid=d7d39dac5d255c045b10817776f681a7&amp;type=2#VisualCfg" binding-mode="ToTarget"/>
         </Bindings>
-        <ui:EnumField label="" value="" type="MeasureMappings, Assembly-CSharp" name="WorldHoverDataCategory" style="height: 30px; overflow: hidden; color: rgb(118, 118, 118); align-self: auto; flex-direction: row; font-size: 10px;">
+        <ui:DropdownField label="" name="WorldHoverCategory" index="0">
             <Bindings>
-                <ui:DataBinding property="value" data-source-path="_activeMeasureCategory" data-source="project://database/Assets/Runtime/VisualCfg.asset?fileID=11400000&amp;guid=d7d39dac5d255c045b10817776f681a7&amp;type=2#VisualCfg" binding-mode="TwoWay"/>
+                <ui:DataBinding property="choices" data-source-path="_measureCategories" data-source="project://database/Assets/Runtime/VisualCfg.asset?fileID=11400000&amp;guid=d7d39dac5d255c045b10817776f681a7&amp;type=2#VisualCfg" binding-mode="ToTarget"/>
+                <ui:DataBinding property="index" data-source-path="_activeMeasureCategory" data-source="project://database/Assets/Runtime/VisualCfg.asset?fileID=11400000&amp;guid=d7d39dac5d255c045b10817776f681a7&amp;type=2#VisualCfg" binding-mode="TwoWay"/>
             </Bindings>
-        </ui:EnumField>
+        </ui:DropdownField>
     </ui:VisualElement>
 </ui:UXML>

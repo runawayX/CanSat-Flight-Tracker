@@ -5,6 +5,9 @@ public class DataConfiguration : ScriptableObject
 {
     [Tooltip("Runtime")] public bool _hasData;
 
+    [Header("Data Processing Config")]
+    public TextAsset _measureProperties;
+
     [Header("File Reading Config")]
     public string _path;
 

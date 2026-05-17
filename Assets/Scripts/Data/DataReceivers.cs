@@ -3,6 +3,7 @@ using System.IO;
 using UnityEngine;
 
 using Newtonsoft.Json;
+using System.Collections.Generic;
 
 [System.Serializable]
 public struct DataKeyframe
@@ -63,21 +64,14 @@ public enum MeasureMappings
 public abstract class DataReceiver<STATUS_T>
 {
     protected readonly DataProcessor _callback;
-    private JsonSerializerSettings _serializationSettings;
-
     public readonly bool _isIncremental;
+
+    Dictionary<string, double> _lastKey;
 
     public DataReceiver(DataProcessor callback, bool isIncremental)
     {
         _callback = callback;
         _isIncremental = isIncremental;
-
-        _serializationSettings = new JsonSerializerSettings();
-        _serializationSettings.DefaultValueHandling = DefaultValueHandling.Populate;
-        _serializationSettings.MissingMemberHandling = MissingMemberHandling.Ignore;
-        _serializationSettings.FloatParseHandling = FloatParseHandling.Double;
-
-        JsonConvert.DefaultSettings = () => _serializationSettings;
     }
 
     public virtual void Begin()
@@ -97,7 +91,7 @@ public abstract class DataReceiver<STATUS_T>
     /// </summary>
     /// <param name="json">Json packet to convert</param>
     /// <returns>True if the creation succeeded</returns>
-    protected virtual bool CreateDatakey(string json)
+    protected virtual bool JsonCreateDatakey(string json)
     {
         string preprocess = json.Trim();
         if (string.IsNullOrEmpty(preprocess) || !preprocess.StartsWith('{')) return false;
@@ -106,24 +100,25 @@ public abstract class DataReceiver<STATUS_T>
 
         try
         {
-            DataKeyframe generated = JsonConvert.DeserializeObject<DataKeyframe>(preprocess, _serializationSettings);
-            _callback.ProcessDatakey(generated, _isIncremental);
-            return true;
+            _lastKey = JsonConvert.DeserializeObject<Dictionary<string, double>>(preprocess, CansatDataHelpers.SerializeConfig);
         }
-        catch
+        catch (Exception e)
         {
-            Debug.LogWarning($"Bad packet - {preprocess}");
+            Debug.LogWarning($"Bad packet ({e.Message})\n{preprocess}");
             _callback.WarnBadDatakey();
             return false;
         }
+
+        _callback.ProcessDatakey(_lastKey, _isIncremental);
+        return true;
     }
 
     /// <summary>
-    /// Non-allocating overload of CreateDatakey
+    /// No string duplication overload of CreateDatakey
     /// </summary>
     /// <param name="json">Json packet to convert</param>
     /// <returns>True if the creation succeeded</returns>
-    protected virtual bool CreateDatakey(ref string json)
+    protected virtual bool JsonCreateDatakey(ref string json)
     {
         string preprocess = json.Trim();
         if (string.IsNullOrEmpty(preprocess) || !preprocess.StartsWith('{')) return false;
@@ -132,16 +127,17 @@ public abstract class DataReceiver<STATUS_T>
 
         try
         {
-            DataKeyframe generated = JsonConvert.DeserializeObject<DataKeyframe>(preprocess, _serializationSettings);
-            _callback.ProcessDatakey(generated, _isIncremental);
-            return true;
+            _lastKey = JsonConvert.DeserializeObject<Dictionary<string, double>>(preprocess, CansatDataHelpers.SerializeConfig);
         }
-        catch
+        catch (Exception e)
         {
-            Debug.LogWarning($"Bad packet - {preprocess}");
+            Debug.LogWarning($"Bad packet ({e.Message})\n{preprocess}");
             _callback.WarnBadDatakey();
             return false;
         }
+
+        _callback.ProcessDatakey(_lastKey, _isIncremental);
+        return true;
     }
 
     public virtual void End()
@@ -178,7 +174,7 @@ public class JsonFileDataReader : DataReceiver<bool>
 
         foreach (string p in packetData)
         {
-            CreateDatakey(p);
+            JsonCreateDatakey(p);
         }
 
         _callback.CompleteData();
@@ -233,7 +229,7 @@ public class SerialPortDataReceiver : DataReceiver<SerialPortHandler.StatusCode>
             if (!_port.IsRunning_P() || !_port.TryPacket_P(out _latestPacket)) return;
 
             if (_logPackets) Debug.Log($"Port reading - {_latestPacket}");
-            CreateDatakey(ref _latestPacket);
+            JsonCreateDatakey(ref _latestPacket);
         }
     }
 

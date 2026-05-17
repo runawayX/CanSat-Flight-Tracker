@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Text;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Events;
@@ -34,6 +35,7 @@ public class DatapointVisualizer : MonoBehaviour
     private void Awake()
     {
         _visualization.LoadVisualCustomization();
+        _visualization._measureCategories = new List<string>();
         //_visualization.SerializeTestCustomization();
 
         _prefabSpawnParameters = new InstantiateParameters();
@@ -79,6 +81,13 @@ public class DatapointVisualizer : MonoBehaviour
             int[] timeStamps = _data.GetNormalizedKeyTimes();
             double3[] locations = _data.GetTravelPathGeo();
 
+            //StringBuilder debugString = new StringBuilder("Timestamps:\n");
+            //foreach (int t in timeStamps) debugString.Append(t + "\n");
+            //debugString.Append("Locations:\n");
+            //foreach (double3 loc in locations) debugString.Append(loc + "\n");
+
+            //Debug.Log(debugString.ToString());
+
             int nodeID = 0;
             foreach (Vector3 point in _data.GetTravelPathUnitySpaceRelative(_map, transform.position))
             {
@@ -111,9 +120,7 @@ public class DatapointVisualizer : MonoBehaviour
         //int category = Math.Min((int) _visualization._activeMeasureCategory, _visualization._categoryColors.Count - 1);
         //float lerpRatio = Mathf.Clamp01((float)((data - _visualization._categoryBounds[category].x) / _visualization._categoryBounds[category].y));
 
-        //return _visualization._categoryColors[category].Evaluate(lerpRatio);
-
-        return Color.purple; // placeholder until category bounds and colors are implemented
+        return _visualization.EvaluateDataColor(CansatDataHelpers.InverseDynamicDataMappings()[_visualization._activeMeasureCategory], data);
     }
 
     public void RefreshDataPlot()

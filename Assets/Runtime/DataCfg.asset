@@ -12,6 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ac5d553befeb1a64ea374339c611466f, type: 3}
   m_Name: DataCfg
   m_EditorClassIdentifier: Assembly-CSharp::DataConfiguration
+  _hasData: 0
+  _measureProperties: {fileID: 4900000, guid: b00aed56f15a94d4396ad5d87fdc8fcf, type: 3}
   _path: 
   _portName: 
   _baudRate: 0
+  _serialStatus: 0
+  _exportPath: 

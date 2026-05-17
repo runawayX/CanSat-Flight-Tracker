@@ -29,6 +29,6 @@ public class WorldspaceDatapoint : MonoBehaviour
     public void PushData()
     {
         if (_parent == null) return;
-        VisualConfiguration.SetHighlightedNode(_parent._visualization, _location, _time_ms + _parent._data._startTimestamp, _time_ms, _evaluatedData);
+        _parent._visualization.SetHighlightedNode(_location, _time_ms + _parent._data._startTimestamp, _time_ms, _evaluatedData);
     }
 }

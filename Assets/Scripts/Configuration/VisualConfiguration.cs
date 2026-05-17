@@ -8,16 +8,12 @@ using UnityEngine;
 public class VisualConfiguration : ScriptableObject
 {
     [Header("Visualization")]
-    public List<Gradient> _categoryColors;
-    public List<double2> _categoryBounds;
-
-    public TextAsset _visualizationProperties;
     public TextAsset _visualizationColors;
-    public IReadOnlyDictionary<MeasureMappings, MeasureProperties> _visualizationPropertyMapping;
-    public IReadOnlyDictionary<MeasureMappings, Gradient> _visualizationColorMapping;
+    private IReadOnlyDictionary<string, Gradient> _visualizationColorMapping;
 
     [Header("Configuration")]
-    public string _activeMeasureCategory;
+    public List<string> _measureCategories;
+    public int _activeMeasureCategory;
 
     [Header("Runtime")]
     public double _evaluatedActiveMeasurement;
@@ -54,10 +50,8 @@ public class VisualConfiguration : ScriptableObject
     {
         try
         {
-            _visualizationPropertyMapping = JsonConvert.DeserializeObject<Dictionary<MeasureMappings, MeasureProperties>>(_visualizationProperties.text);
-
-            Dictionary<MeasureMappings, JsonColor[]> deserializedColorMap = JsonConvert.DeserializeObject<Dictionary<MeasureMappings, JsonColor[]>>(_visualizationColors.text);
-            Dictionary<MeasureMappings, Gradient> unityColorMap = new Dictionary<MeasureMappings, Gradient>();
+            Dictionary<string, JsonColor[]> deserializedColorMap = JsonConvert.DeserializeObject<Dictionary<string, JsonColor[]>>(_visualizationColors.text, CansatDataHelpers.SerializeConfig);
+            Dictionary<string, Gradient> unityColorMap = new Dictionary<string, Gradient>();
             foreach (var mapping in deserializedColorMap)
             {
                 Gradient g = new Gradient() { colorKeys = new GradientColorKey[mapping.Value.Length], alphaKeys = new GradientAlphaKey[1] { new(1, 0) } };
@@ -77,13 +71,46 @@ public class VisualConfiguration : ScriptableObject
         }
     }
 
-    public static void SetHighlightedNode(VisualConfiguration instance, double3 location, int time, int normalizedTime, double evaluated)
+    public void SetHighlightedNode(double3 location, int time, int normalizedTime, double evaluated)
     {
-        instance._highlightedNodeLocation = $"Longitude: {location.x}°\nLatitude: {location.y}°\n{location.z}m above sea level";
+        _measureCategories = CansatDataHelpers.InverseDynamicDataMappings();
 
-        instance._highlightedNodeTime = $"(system time {TimeSpan.FromMilliseconds(time).ToString(@"h\:mm\:ss\.ff")})";
-        instance._highlightedNodeNormalizedTime = $"At {TimeSpan.FromMilliseconds(normalizedTime).ToString(@"h\:mm\:ss\.ff")}";
+        _highlightedNodeLocation = $"Longitude: {location.x}°\nLatitude: {location.y}°\n{location.z}m above sea level";
 
-        instance._highlightedNodeEvaluated = $"{CansatDataHelpers.MeasureProperties[instance._activeMeasureCategory]._name}: {Math.Round(evaluated, 4)} {CansatDataHelpers.MeasureProperties[instance._activeMeasureCategory]._suffix}";
+        _highlightedNodeTime = $"(system time {TimeSpan.FromMilliseconds(time).ToString(@"h\:mm\:ss\.ff")})";
+        _highlightedNodeNormalizedTime = $"At {TimeSpan.FromMilliseconds(normalizedTime).ToString(@"h\:mm\:ss\.ff")}";
+
+        if (CansatDataHelpers.MeasurePropertyMap.TryGetValue(CansatDataHelpers.InverseDynamicDataMappings()[_activeMeasureCategory], out MeasureProperties p)) 
+            _highlightedNodeEvaluated = $"{p._name ?? CansatDataHelpers.InverseDynamicDataMappings()[_activeMeasureCategory]}: {Math.Round(evaluated, 4)} {p._suffix}";
+        else
+            _highlightedNodeEvaluated = $"Undefined Parameter: {Math.Round(evaluated, 4)}";
+    }
+
+    public Color EvaluateDataColor(string category, double value)
+    {
+        if (!CansatDataHelpers.MeasurePropertyMap.ContainsKey(category))
+        {
+            Debug.LogError($"Trying to access undefined data category \"{category}\".");
+            return Color.magenta;
+        }
+
+        float lerpRatio = 0f;
+
+        if (!double.IsNaN(value))
+        {
+            double2 bound = CansatDataHelpers.MeasurePropertyMap[category].GetBounds();
+            lerpRatio = Mathf.Clamp01((float) ((value - bound.x) / (bound.y - bound.x)));
+        }
+
+        Debug.Log($"Color evaluation lerp {lerpRatio}");
+
+        if (_visualizationColorMapping.TryGetValue(category, out Gradient g))
+        {
+            return g.Evaluate(lerpRatio);
+        }
+        else
+        {
+            return _visualizationColorMapping["Default"].Evaluate(lerpRatio);
+        }
     }
 }

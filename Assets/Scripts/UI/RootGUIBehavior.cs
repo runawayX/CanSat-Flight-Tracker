@@ -41,6 +41,7 @@ public class RootGUIBehavior : MonoBehaviour
     private Image _packetPing;
 
     private VisualElement _worldHoverInfo;
+    private DropdownField _worldHoverCategory;
 
     // Timing
     private float _packetPingTime = 0f;
@@ -95,7 +96,7 @@ public class RootGUIBehavior : MonoBehaviour
         _ui.rootVisualElement.Q<DoubleField>("LongitudeOrigin").RegisterCallback<KeyDownEvent>(e => { if (e.keyCode == _submitKey) RunRefreshOrigin(); });
         _ui.rootVisualElement.Q<DoubleField>("AltitudeOrigin").RegisterCallback<KeyDownEvent>(e => { if (e.keyCode == _submitKey) RunRefreshOrigin(); });
 
-        _ui.rootVisualElement.Q<DropdownField>("WorldHoverDataCategory").RegisterCallback<ChangeEvent<Enum>>(e => { RunChangeHoverCategory((MeasureMappings) e.newValue); });
+        _ui.rootVisualElement.Q<DropdownField>("WorldHoverCategory").RegisterCallback<ChangeEvent<string>>(e => { RunChangeHoverCategory(e.newValue); });
 
         // Preconfiguring UI
         _settingsView.SetEnabled(false);
@@ -252,9 +253,9 @@ public class RootGUIBehavior : MonoBehaviour
     // Data Visualization
     public void RunChangeHoverCategory(string category)
     {
-        Debug.Log("Category changed");
-        _visualizationConfig._activeMeasureCategory = category;
-        
+        Debug.Log($"Category changed to {category}");
+        _visualizationConfig._activeMeasureCategory = CansatDataHelpers.DynamicDataMappings[category];
+
         _visualization.RefreshDataPlot();
         if (_visualization._visualization._highlightedNode != null) _visualization._visualization._highlightedNode.PushData();
     }

@@ -1,0 +1,121 @@
+{
+  "temp": {
+    "DisplayName": "Temperature (SCD41)",
+    "DisplaySuffix": "°C",
+    "PrioritizeDefault": false,
+    "DefaultMin": -20.0,
+    "DefaultMax": 60.0
+  },
+  "hum": {
+    "DisplayName": "Humidity",
+    "DisplaySuffix": "%",
+    "PrioritizeDefault": false,
+    "DefaultMin": 0.0,
+    "DefaultMax": 100.0
+  },
+  "pres": {
+    "DisplayName": "Pressure",
+    "DisplaySuffix": "hPa",
+    "PrioritizeDefault": false,
+    "DefaultMin": 900.0,
+    "DefaultMax": 1013.25
+  },
+  "co2": {
+    "DisplayName": "CO2",
+    "DisplaySuffix": "ppm",
+    "PrioritizeDefault": false,
+    "DefaultMin": 0,
+    "DefaultMax": 5000
+  },
+  "uv": {
+    "DisplayName": "UV Raw",
+    "DisplaySuffix": "",
+    "PrioritizeDefault": true,
+    "DefaultMin": 0,
+    "DefaultMax": 23000
+  },
+  "btemp": {
+    "DisplayName": "Barometer Temperature",
+    "DisplaySuffix": "°C",
+    "PrioritizeDefault": false,
+    "DefaultMin": -40.0,
+    "DefaultMax": 85.0
+  },
+  "balt": {
+    "DisplayName": "Barometric Altitude",
+    "DisplaySuffix": "m",
+    "PrioritizeDefault": false,
+    "DefaultMin": -500.0,
+    "DefaultMax": 20000.0
+  },
+  "sats": {
+    "DisplayName": "Satellites in view",
+    "DisplaySuffix": "",
+    "PrioritizeDefault": true,
+    "DefaultMin": 0,
+    "DefaultMax": 12
+  },
+  "fix": {
+    "DisplayName": "GPS Fix",
+    "DisplaySuffix": "",
+    "PrioritizeDefault": true,
+    "DefaultMin": 0,
+    "DefaultMax": 1
+  },
+  "als": {
+    "DisplayName": "Ambient Light Raw Count",
+    "DisplaySuffix": "",
+    "PrioritizeDefault": false,
+    "DefaultMin": 0,
+    "DefaultMax": 65535
+  },
+  "svolt": {
+    "DisplayName": "Solar Panel Voltage",
+    "DisplaySuffix": "V",
+    "PrioritizeDefault": false,
+    "DefaultMin": 0.0,
+    "DefaultMax": 12.0
+  },
+  "scurr": {
+    "DisplayName": "Solar Panel Current",
+    "DisplaySuffix": "mA",
+    "PrioritizeDefault": false,
+    "DefaultMin": 0.0,
+    "DefaultMax": 5000.0
+  },
+  "spwr": {
+    "DisplayName": "Solar Panel Power",
+    "DisplaySuffix": "mW",
+    "PrioritizeDefault": false,
+    "DefaultMin": 0.0,
+    "DefaultMax": 100.0
+  },
+  "t2temp": {
+    "DisplayName": "Secondary Temperature (TMP102)",
+    "DisplaySuffix": "°C",
+    "PrioritizeDefault": false,
+    "DefaultMin": -20.0,
+    "DefaultMax": 60.0
+  },
+  "lraw": {
+    "DisplayName": "Photoresistor Raw",
+    "DisplaySuffix": "",
+    "PrioritizeDefault": true,
+    "DefaultMin": 0,
+    "DefaultMax": 4095
+  },
+  "lvolt": {
+    "DisplayName": "Photoresistor Voltage",
+    "DisplaySuffix": "V",
+    "PrioritizeDefault": false,
+    "DefaultMin": 0.0,
+    "DefaultMax": 5.0
+  },
+  "sd": {
+    "DisplayName": "SD Card Status",
+    "DisplaySuffix": "",
+    "PrioritizeDefault": true,
+    "DefaultMin": 0,
+    "DefaultMax": 1
+  }
+}

@@ -37,6 +37,8 @@ public readonly struct GeoTransform
 /// </summary>
 public struct CDM
 {
+    public static readonly int Mapped = 7; //
+
     public static int t = -1;
     public static int lat = -1, lon = -1, alt = -1;
     public static int hdg = -1, pitch = -1, roll = -1;
@@ -57,22 +59,24 @@ public struct CDM
 }
 
 [System.Serializable]
-public struct MeasureProperties
+public class MeasureProperties
 {
     [JsonProperty("DisplayName")] public string _name { get; set; }
     [JsonProperty("DisplaySuffix")] public string _suffix { get; set; }
     [JsonProperty("PrioritizeDefault")] public bool _prioritizeDefault { get; set; }
-    [JsonProperty("DefaultBounds")] public double2 _defaultBounds { get; set; }
+    [JsonProperty("DefaultMin")] public double _defaultMin { get; set; }
+    [JsonProperty("DefaultMax")] public double _defaultMax { get; set; }
     [JsonIgnore] public double2 _runtimeBounds;
     [JsonIgnore] public bool _hasRuntimeBounds;
 
     public MeasureProperties(double2 defaultBounds, bool prioritizeDefault)
     {
-        _name = "Undefined";
+        _name = null;
         _suffix = "";
 
         _prioritizeDefault = prioritizeDefault;
-        _defaultBounds = defaultBounds;
+        _defaultMin = defaultBounds.x;
+        _defaultMax = defaultBounds.y;
 
         _runtimeBounds = _prioritizeDefault ? defaultBounds : double2.zero;
         _hasRuntimeBounds = false;
@@ -80,19 +84,19 @@ public struct MeasureProperties
 
     public double2 GetBounds()
     {
-        if (_prioritizeDefault || !_hasRuntimeBounds) return _defaultBounds;
+        if (_prioritizeDefault || !_hasRuntimeBounds) return new double2(_defaultMin, _defaultMax);
         else return _runtimeBounds;
     }
 
-    public static void CheckRuntimeBounds(ref MeasureProperties properties, double value)
+    public void CheckRuntimeBounds(double value)
     {
-        if (properties._prioritizeDefault) return;
+        if (_prioritizeDefault) return;
 
-        if (properties._hasRuntimeBounds) properties._runtimeBounds = new double2(math.min(properties._runtimeBounds.x, value), math.max(properties._runtimeBounds.y, value));
+        if (_hasRuntimeBounds) _runtimeBounds = new double2(math.min(_runtimeBounds.x, value), math.max(_runtimeBounds.y, value));
         else
         {
-            properties._runtimeBounds = value;
-            properties._hasRuntimeBounds = true;
+            _runtimeBounds = value;
+            _hasRuntimeBounds = true;
         }
     }
 }
@@ -129,6 +133,7 @@ public class DataProcessor : MonoBehaviour
         _dataKeys = new List<TreeDictionary<int, double>>();
 
         DynamicDataMappings = new Dictionary<string, int>();
+        LoadMeasureProperties(_config._measureProperties);
     }
 
     private void Start()
@@ -191,7 +196,7 @@ public class DataProcessor : MonoBehaviour
             return;
         }
 
-        DataExporter<DataKeyframe> export = new JsonFileDataExporter(_dataKeys, _config._exportPath);
+        DataExporter export = new JsonFileDataExporter(_dataKeys, DynamicDataMappings, _config._exportPath);
 
         try
         {
@@ -227,12 +232,21 @@ public class DataProcessor : MonoBehaviour
                 DynamicDataMappings.Add(sub.Key, _dataKeys.Count);
                 CDM.Remap(sub.Key, DynamicDataMappings[sub.Key]);
 
+                if (!MeasurePropertyMap.ContainsKey(sub.Key)) 
+                    MeasurePropertyMap.Add(sub.Key, new MeasureProperties(double2.zero, false));
+
                 _dataKeys.Add(new TreeDictionary<int, double>());
+                _hasUpdatedMappings = true;
+                _hasUpdatedUncommonMappings = true;
+                _hasUpdatedNamedMappings = true;
             }
 
             _dataKeys[DynamicDataMappings[sub.Key]].Add(t, sub.Value);
+            MeasurePropertyMap[sub.Key].CheckRuntimeBounds(sub.Value);
 
-            _startTimestamp = Math.Min(_startTimestamp, t);
+            if (_hasData) _startTimestamp = Math.Min(_startTimestamp, t);
+            else _startTimestamp = t;
+
             _endTimestamp = Math.Max(_endTimestamp, t);
         }
 
@@ -358,7 +372,7 @@ public class DataProcessor : MonoBehaviour
         }
 
         time_ms += _startTimestamp;
-        int clamp_time_ms = Math.Clamp(time_ms, _dataKeys[CDM.lat].First().Key, _dataKeys[CDM.lat].Last().Key);
+        int clamp_time_ms = Math.Clamp(time_ms, _dataKeys[CDM.lon].First().Key, _dataKeys[CDM.lon].Last().Key);
 
         // taking lon as base as GeoTransform sub-data is assumed uniform
         int sT = _dataKeys[CDM.lon].WeakPredecessor(clamp_time_ms).Key;
@@ -397,7 +411,7 @@ public class DataProcessor : MonoBehaviour
     {
         if (!_hasData) return new Vector3[0];
 
-        Vector3[] result = new Vector3[_dataKeys.Count];
+        Vector3[] result = new Vector3[_dataKeys[CDM.lon].Count];
 
         int r = 0;
         foreach (int t in _dataKeys[CDM.lon].Keys)
@@ -461,7 +475,11 @@ public class DataProcessor : MonoBehaviour
             return false;
         }
 
-        int categoryID = DynamicDataMappings[category];
+        if (!DynamicDataMappings.TryGetValue(category, out int categoryID))
+        {
+            evaluated = 0;
+            return false;
+        }
 
         time_ms += _startTimestamp;
         int clamp_time_ms = Math.Clamp(time_ms, _dataKeys[categoryID].First().Key, _dataKeys[categoryID].Last().Key);
@@ -478,6 +496,39 @@ public class DataProcessor : MonoBehaviour
         float lerpRatio = (float) (time_ms - sT) / (eT - sT);
 
         evaluated = math.lerp(_dataKeys[categoryID][sT], _dataKeys[categoryID][eT], lerpRatio);
+        return true;
+    }
+
+    /// <summary>
+    /// Gives interpolated measurement for a specified category (internal id) at the desired time-point.
+    /// </summary>
+    /// <param name="time_ms">Normalized time-point (in milliseconds) at which to evaluate</param>
+    /// <param name="category">Measurement category to evaluate</param>
+    /// <param name="evaluated">Evaluated measurement</param>
+    /// <returns>Whether the evaluation succeeded (false if no data)</returns>
+    public bool EvaluateMeasurement(int time_ms, int category, out double evaluated)
+    {
+        if (!_hasData)
+        {
+            evaluated = 0;
+            return false;
+        }
+
+        time_ms += _startTimestamp;
+        int clamp_time_ms = Math.Clamp(time_ms, _dataKeys[category].First().Key, _dataKeys[category].Last().Key);
+
+        int sT = _dataKeys[category].WeakPredecessor(clamp_time_ms).Key;
+        int eT = _dataKeys[category].WeakSuccessor(clamp_time_ms).Key;
+
+        if (sT == eT)
+        {
+            evaluated = _dataKeys[category][sT];
+            return true;
+        }
+
+        float lerpRatio = (float) (time_ms - sT) / (eT - sT);
+
+        evaluated = math.lerp(_dataKeys[category][sT], _dataKeys[category][eT], lerpRatio);
         return true;
     }
 
@@ -539,35 +590,111 @@ public static class CansatDataHelpers
 
     public static Dictionary<string, int> DynamicDataMappings;
 
-    public static IReadOnlyDictionary<string, MeasureProperties> MeasureProperties;
+    public static bool _hasUpdatedMappings = true;
+    private static List<string> _inverseMappingsCache;
+
+    public static bool _hasUpdatedUncommonMappings = true;
+    private static List<string> _inverseUncommonMappingsCache;
+
+    public static bool _hasUpdatedNamedMappings = true;
+    private static List<string> _inverseNamedMappingsCache;
+
+    public static List<string> InverseDynamicDataMappings()
+    {
+        if (!_hasUpdatedMappings) return _inverseMappingsCache;
+
+        string[] tempCategories = new string[DynamicDataMappings.Count];
+        foreach (var mapping in DynamicDataMappings)
+        {
+            tempCategories[mapping.Value] = mapping.Key;
+        }
+
+        _inverseMappingsCache = new List<string>(tempCategories);
+
+        _hasUpdatedMappings = false;
+        return _inverseMappingsCache;
+    }
+
+    public static List<string> InverseUncommonDataMappings()
+    {
+        if (!_hasUpdatedUncommonMappings) return _inverseUncommonMappingsCache;
+
+        string[] tempCategories = new string[DynamicDataMappings.Count - CDM.Mapped];
+
+        int id = 0;
+        foreach (var mapping in DynamicDataMappings)
+        {
+            // skipping internal CDM
+            if (mapping.Key == "t"
+                || mapping.Key == "lat"
+                || mapping.Key == "lon"
+                || mapping.Key == "alt"
+                || mapping.Key == "hdg"
+                || mapping.Key == "pitch"
+                || mapping.Key == "roll")
+                continue;
+
+            tempCategories[id] = mapping.Key;
+            ++id;
+        }
+
+        _inverseUncommonMappingsCache = new List<string>(tempCategories);
+
+        _hasUpdatedUncommonMappings = false;
+        return _inverseUncommonMappingsCache;
+    }
+
+    public static int RemapFromUncommon(int uCategory)
+    {
+        Debug.Log($"Remapped {InverseNamedDataMappings()[uCategory]}/{InverseUncommonDataMappings()[uCategory]} ({uCategory}) to {DynamicDataMappings[InverseUncommonDataMappings()[uCategory]]} ({InverseDynamicDataMappings()[DynamicDataMappings[InverseUncommonDataMappings()[uCategory]]]})");
+        return DynamicDataMappings[InverseUncommonDataMappings()[uCategory]];
+    }
+
+    public static List<string> InverseNamedDataMappings()
+    {
+        if (!_hasUpdatedNamedMappings) return _inverseNamedMappingsCache;
+
+        string[] tempCategories = new string[DynamicDataMappings.Count - CDM.Mapped];
+        
+        int id = 0;
+        foreach (var mapping in DynamicDataMappings)
+        {
+            // skipping internal CDM
+            if (mapping.Key == "t" 
+                || mapping.Key == "lat" 
+                || mapping.Key == "lon" 
+                || mapping.Key == "alt" 
+                || mapping.Key == "hdg" 
+                || mapping.Key == "pitch" 
+                || mapping.Key == "roll")
+                continue;
+
+            tempCategories[id] = MeasurePropertyMap[mapping.Key]._name ?? mapping.Key;
+            ++id;
+        }
+
+        _inverseNamedMappingsCache = new List<string>(tempCategories);
+
+        _hasUpdatedNamedMappings = false;
+        return _inverseNamedMappingsCache;
+    }
+
+    public static Dictionary<string, MeasureProperties> MeasurePropertyMap;
     public static void LoadMeasureProperties(TextAsset propertiesAsset)
     {
         try
         {
-            MeasureProperties = JsonConvert.DeserializeObject<Dictionary<string, MeasureProperties>>(propertiesAsset.text);
+            MeasurePropertyMap = JsonConvert.DeserializeObject<Dictionary<string, MeasureProperties>>(propertiesAsset.text);
         }
-        catch
+        catch (Exception e)
         {
-            Debug.LogError("Failed to load measure properties.");
+            MeasurePropertyMap = new Dictionary<string, MeasureProperties>();
+            Debug.LogError($"Failed to load measure properties ({e.Message})");
         }
     }
-    //= new Dictionary<string, string> {
-    //    { "t", "°C" },
-    //    { "hum", "%" },
-    //    { "pres", "hPa" },
-    //    { "co2", "ppm" },
-    //    { MeasureMappings.UV, "index" },
-    //    { MeasureMappings.BarTemperature, "°C" },
-    //    { MeasureMappings.BarAltitude, "m" },
-    //    { MeasureMappings.Satellites, "" },
-    //    { MeasureMappings.FixGPS, "" },
-    //    { MeasureMappings.AmbientLightRaw, "raw" },
-    //    { MeasureMappings.SolarVoltage, "V" },
-    //    { MeasureMappings.SolarCurrent, "A" },
-    //    { MeasureMappings.SolarPower, "W" },
-    //    { MeasureMappings.Temperature2, "°C" },
-    //    { MeasureMappings.PhotoRaw, "raw" },
-    //    { MeasureMappings.PhotoVoltage, "V" },
-    //    { MeasureMappings.StatusSD, "" },
-    //};
+
+    public static readonly JsonSerializerSettings SerializeConfig = new JsonSerializerSettings() {
+        FloatParseHandling = FloatParseHandling.Double, 
+        FloatFormatHandling = FloatFormatHandling.String
+    };
 }
