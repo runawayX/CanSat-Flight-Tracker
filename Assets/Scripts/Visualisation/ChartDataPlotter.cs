@@ -1,6 +1,9 @@
+using SFB;
+using System;
 using System.Collections.Generic;
 using TMPro;
 using Unity.Mathematics;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
 using XCharts.Runtime;
@@ -25,6 +28,8 @@ public class ChartDataPlotter : MonoBehaviour
     [SerializeField] private TMP_Text _inactiveAlert;
 
     [SerializeField] private Button _refreshWidget;
+    [SerializeField] private Button _exportChart;
+    [SerializeField] private Button _addData;
     [SerializeField] private Button _deleteWidget;
 
     // Internal chart
@@ -43,6 +48,7 @@ public class ChartDataPlotter : MonoBehaviour
         _minorAxis.minMaxType = Axis.AxisMinMaxType.Custom;
 
         _refreshWidget.onClick.AddListener(RefreshChart);
+        _exportChart.onClick.AddListener(ExportChart);
         _deleteWidget.onClick.AddListener(DeleteChart);
     }
 
@@ -106,13 +112,42 @@ public class ChartDataPlotter : MonoBehaviour
         {
             if (!CansatDataHelpers.DynamicDataMappings.TryGetValue(c, out int categoryCache)) continue;
 
-            Line chartSeries = _chartRenderer.AddSerie<Line>(CansatDataHelpers.MeasurePropertyMap[c]._name ?? c);
+            Line chartSeries = _chartRenderer.AddSerie<Line>(serieName: CansatDataHelpers.MeasurePropertyMap[c]._name ?? c);
 
             foreach (var x in majorAxisCache)
             {
                 if (_data.EvaluateMeasurement(x.time, categoryCache, out double y)) chartSeries.AddXYData(isTimeMapped ? (double) x.time / 1000 : x.value, y);
                 else chartSeries.AddXYData(isTimeMapped ? (double) x.time / 1000 : x.value, yBounds.x); // default to minimum from bounds if not measured
             }
+        }
+    }
+
+    public void ExportChart()
+    {
+        ExtensionFilter[] filters = new ExtensionFilter[1] {
+            new ExtensionFilter("Image ", "png", "jpg", "exr")
+        };
+
+        try
+        {
+            string path = StandaloneFileBrowser.SaveFilePanel("Save Chart image", "", "Chart", filters);
+            if (!string.IsNullOrEmpty(path))
+            {
+                Transform originalArea = transform;
+                Vector2 originalPos = _chartRenderer.rectTransform.anchoredPosition;
+
+                _chartRenderer.transform.SetParent(_chartRenderer.canvas.transform);
+                _chartRenderer.rectTransform.anchoredPosition = Vector2.zero;
+
+                _chartRenderer.SaveAsImage(imageType: path.Split('.', StringSplitOptions.None)[1], savePath: path);
+
+                _chartRenderer.transform.SetParent(originalArea);
+                _chartRenderer.rectTransform.anchoredPosition = originalPos;
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogException(e);
         }
     }
 

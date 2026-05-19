@@ -27,6 +27,13 @@
     "DefaultMin": 0.0,
     "DefaultMax": 1000.0
   },
+  "gs": {
+    "DisplayName": "WGS84 Globe Separation",
+    "DisplaySuffix": "m",
+    "PrioritizeDefault": false,
+    "DefaultMin": 0.0,
+    "DefaultMax": 20.0
+  },
   "temp": {
     "DisplayName": "Temperature (SCD41)",
     "DisplaySuffix": "°C",

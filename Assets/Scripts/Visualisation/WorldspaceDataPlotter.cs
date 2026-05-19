@@ -65,7 +65,7 @@ public class WorldspaceDataPlotter : MonoBehaviour
             WorldspaceDatapoint dp = Instantiate(_datapointPrefab, instancePos, Quaternion.identity, _prefabSpawnParameters).GetComponent<WorldspaceDatapoint>();
             
             dp._parent = this;
-            dp._location = _data.GetLastPositionGeo();
+            dp._location = _data.GetLastPositionGeo(true);
             dp._time_ms = _data.TotalTime();
             dp.RefreshData();
 
@@ -83,7 +83,7 @@ public class WorldspaceDataPlotter : MonoBehaviour
             _transformGPS.longitudeLatitudeHeight = origin;
 
             int[] timeStamps = _data.GetNormalizedBaseTimes();
-            double3[] locations = _data.GetTravelPathGeo();
+            double3[] locations = _data.GetTravelPathGeo(true);
 
             //StringBuilder debugString = new StringBuilder("Timestamps:\n");
             //foreach (int t in timeStamps) debugString.Append(t + "\n");

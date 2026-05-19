@@ -51,15 +51,21 @@ public class InWorldInteractionHandler : MonoBehaviour
     {
         if (TraceClick(out RaycastHit target) && target.collider.gameObject.CompareTag("Datapoint"))
         {
-            if (_visualization._highlightedNode == null)
+            WorldspaceDatapoint n = target.collider.gameObject.GetComponent<WorldspaceDatapoint>();
+            if (_visualization._highlightedNode != n)
             {
-                _visualization._highlightedNode = target.collider.gameObject.GetComponent<WorldspaceDatapoint>();
+                if (_visualization._highlightedNode != null) _visualization._highlightedNode.SetHighlighted(false);
+
+                _visualization._highlightedNode = n;
                 _visualization._highlightedNode.PushData();
+
+                _visualization._highlightedNode.SetHighlighted(true);
             }
         } else if (!_visualization._highlightedNodeLock)
         {
+            if (_visualization._highlightedNode != null) _visualization._highlightedNode.SetHighlighted(false);
             _visualization._highlightedNode = null;
-        }
+        }        
     }
 
     private void OnEnable()

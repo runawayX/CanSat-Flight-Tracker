@@ -55,14 +55,20 @@ public class VisualConfiguration : ScriptableObject
         {
             Dictionary<string, JsonColor[]> deserializedColorMap = JsonConvert.DeserializeObject<Dictionary<string, JsonColor[]>>(_visualizationColors.text, CansatDataHelpers.SerializeConfig);
             Dictionary<string, Gradient> unityColorMap = new Dictionary<string, Gradient>();
+
             foreach (var mapping in deserializedColorMap)
             {
                 Gradient g = new Gradient();
                 GradientColorKey[] colorPoints = new GradientColorKey[mapping.Value.Length];
+                GradientAlphaKey[] alphaPoints = new GradientAlphaKey[mapping.Value.Length];
 
                 float timeIncrement = 1f / (mapping.Value.Length - 1);
 
-                for (int i = 0; i < mapping.Value.Length; i++) colorPoints[i] = new(mapping.Value[i].ToColor(), timeIncrement * i);
+                for (int i = 0; i < mapping.Value.Length; i++)
+                {
+                    colorPoints[i] = new(mapping.Value[i].ToColor(), timeIncrement * i);
+                    alphaPoints[i] = new(mapping.Value[i].a, timeIncrement * i);
+                }
 
                 g.SetKeys(colorPoints, _internalAlphaMultiplier);
                 unityColorMap[mapping.Key] = g;
@@ -77,7 +83,7 @@ public class VisualConfiguration : ScriptableObject
         }
     }
 
-    public void SetHighlightedNode(double3 location, int time, int normalizedTime, double evaluated)
+    public void SetHighlightedNodeInfo(double3 location, int time, int normalizedTime, double evaluated)
     {
         _measureCategories = CansatDataHelpers.InverseDynamicDataMappings();
 

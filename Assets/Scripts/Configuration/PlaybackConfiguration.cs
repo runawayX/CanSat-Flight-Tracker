@@ -13,6 +13,8 @@ public class PlaybackConfiguration : ScriptableObject
 
         Forward,
         FastForward,
+
+        Live
     }
 
     [Header("Configuration")]
@@ -23,6 +25,7 @@ public class PlaybackConfiguration : ScriptableObject
     public int _duration_ms;
 
     [Space(5)]
+    public float _liveSeekTime = 1f;
     public int _smallStep_ms;
 
     [Header("GUI")]
@@ -30,7 +33,7 @@ public class PlaybackConfiguration : ScriptableObject
 
     public ToggleButtonGroupState GetStateAsMask()
     {
-        ToggleButtonGroupState stateMask = new ToggleButtonGroupState(0b00000, 5);
+        ToggleButtonGroupState stateMask = new ToggleButtonGroupState(0b000000, 6);
         stateMask[(int) _state] = true;
         return stateMask;
     }
@@ -38,7 +41,7 @@ public class PlaybackConfiguration : ScriptableObject
     public void SetStateFromMask(ToggleButtonGroupState stateMask)
     {
         //Debug.Log($"SO received message, changing to {stateMask}.");
-        for (int id = 0; id < 5; id++) if (stateMask[id])
+        for (int id = 0; id < 6; id++) if (stateMask[id])
         {
             _state = (PlaybackState) id;
             return;

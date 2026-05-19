@@ -7,7 +7,6 @@ using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using TMPro;
-using Unity.Android.Gradle.Manifest;
 using Unity.Mathematics;
 using UnityEditor;
 using UnityEngine;
@@ -37,6 +36,7 @@ public class DataProcessor : MonoBehaviour
     //[SerializeField] private CesiumGeoreference _map;
 
     [Header("Events")]
+    public UnityEvent<bool> _onFirstPacket;
     public UnityEvent<bool> _onNewPacket;
     public UnityEvent _onBadPacket;
 
@@ -184,6 +184,7 @@ public class DataProcessor : MonoBehaviour
         }
 
         _hasData = true;
+        _onFirstPacket.Invoke(incremental);
         _onNewPacket.Invoke(incremental);
     }
 
@@ -215,8 +216,9 @@ public class DataProcessor : MonoBehaviour
     /// </summary>
     /// <param name="time_ms">Normalized time-point (in milliseconds) at which to evaluate</param>
     /// <param name="evaluated">Longitude, Latitude, Altitude</param>
+    /// <param name="msl">True to return meters above sea level as altitude (Optional)</param>
     /// <returns>Whether the evaluation succeeded (false if no data)</returns>
-    public bool EvaluateLocationGPS(int time_ms, out double3 evaluated)
+    public bool EvaluateLocationGPS(int time_ms, out double3 evaluated, bool msl = false)
     {
         if (!_hasData)
         {
@@ -224,9 +226,9 @@ public class DataProcessor : MonoBehaviour
             return false;
         }
 
-        if (!CDM.IsValidGPS())
+        if (!CDM.IsValidGPS(msl))
         {
-            Debug.LogWarning("Cannot evaluate GPS location - missing/invalid Longitude, Latitude or Altitude components.");
+            Debug.LogWarning("Cannot evaluate GPS location - missing/invalid Longitude, Latitude, Altitude or Geoid Separation components.");
             evaluated = double3.zero;
             return false;
         }
@@ -240,10 +242,9 @@ public class DataProcessor : MonoBehaviour
 
         if (sT == eT)
         {
-            evaluated = new double3(
-                _dataKeys[CDM.lon][sT],
-                _dataKeys[CDM.lat][sT],
-                _dataKeys[CDM.alt][sT]);
+            if (msl) evaluated = new double3(_dataKeys[CDM.lon][sT], _dataKeys[CDM.lat][sT], _dataKeys[CDM.alt][sT]);
+            else evaluated = new double3(_dataKeys[CDM.lon][sT], _dataKeys[CDM.lat][sT], _dataKeys[CDM.alt][sT] + _dataKeys[CDM.gs][sT]); // converted to WGS84 altitude
+
             return true;
         }
 
@@ -251,10 +252,14 @@ public class DataProcessor : MonoBehaviour
 
         //Debug.Log($"Lerp {lerpRatio} ({time_ms}ms)\nFrom {sK.t}ms to {eK.t}ms");
 
-        evaluated = new double3(
+        if (msl) evaluated = new double3(
             math.lerp(_dataKeys[CDM.lon][sT], _dataKeys[CDM.lon][eT], lerpRatio),
             math.lerp(_dataKeys[CDM.lat][sT], _dataKeys[CDM.lat][eT], lerpRatio),
             math.lerp(_dataKeys[CDM.alt][sT], _dataKeys[CDM.alt][eT], lerpRatio));
+        else evaluated = new double3(
+            math.lerp(_dataKeys[CDM.lon][sT], _dataKeys[CDM.lon][eT], lerpRatio),
+            math.lerp(_dataKeys[CDM.lat][sT], _dataKeys[CDM.lat][eT], lerpRatio),
+            math.lerp(_dataKeys[CDM.alt][sT] + _dataKeys[CDM.gs][sT], _dataKeys[CDM.alt][eT] + _dataKeys[CDM.gs][eT], lerpRatio)); // converted to WGS84 altitude
 
         return true;
     }
@@ -309,8 +314,9 @@ public class DataProcessor : MonoBehaviour
     /// </summary>
     /// <param name="time_ms">Normalized time-point (in milliseconds) at which to evaluate</param>
     /// <param name="evaluated">Evaluated location (lon, lat, alt) and rotation (Unity-space quaternion)</param>
+    /// <param name="msl">True to return meters above sea level as altitude (Optional)</param>
     /// <returns>Whether the evaluation succeeded (false if no data)</returns>
-    public bool EvaluateTransform(int time_ms, out GeoTransform evaluated)
+    public bool EvaluateTransform(int time_ms, out GeoTransform evaluated, bool msl = false)
     {
         if (!_hasData)
         {
@@ -318,7 +324,7 @@ public class DataProcessor : MonoBehaviour
             return false;
         }
 
-        if (!CDM.IsValidGPS())
+        if (!CDM.IsValidGPS(msl))
         {
             Debug.LogWarning("Cannot evaluate GeoTransform - missing/invalid data.");
             evaluated = GeoTransform.identity;
@@ -337,7 +343,9 @@ public class DataProcessor : MonoBehaviour
 
         if (sT == eT)
         {
-            p = new double3(_dataKeys[CDM.lon][sT], _dataKeys[CDM.lat][sT], _dataKeys[CDM.alt][sT]);
+            if (msl) p = new double3(_dataKeys[CDM.lon][sT], _dataKeys[CDM.lat][sT], _dataKeys[CDM.alt][sT]);
+            else p = new double3(_dataKeys[CDM.lon][sT], _dataKeys[CDM.lat][sT], _dataKeys[CDM.alt][sT] + _dataKeys[CDM.gs][sT]); // converted to WGS84 altitude
+
             if (CDM.IsValidRotation()) r = Quaternion.AngleAxis((float) _dataKeys[CDM.pitch][sT], Vector3.right)
                 * Quaternion.AngleAxis((float) _dataKeys[CDM.hdg][sT], Vector3.up) 
                 * Quaternion.AngleAxis((float) _dataKeys[CDM.roll][sT], Vector3.forward);
@@ -348,9 +356,12 @@ public class DataProcessor : MonoBehaviour
 
         float lerpRatio = (float) (time_ms - sT) / (eT - sT);
 
-        p = new double3(math.lerp(_dataKeys[CDM.lon][sT], _dataKeys[CDM.lon][eT], lerpRatio),
+        if (msl) p = new double3(math.lerp(_dataKeys[CDM.lon][sT], _dataKeys[CDM.lon][eT], lerpRatio),
             math.lerp(_dataKeys[CDM.lat][sT], _dataKeys[CDM.lat][eT], lerpRatio),
             math.lerp(_dataKeys[CDM.alt][sT], _dataKeys[CDM.alt][eT], lerpRatio));
+        else p = new double3(math.lerp(_dataKeys[CDM.lon][sT], _dataKeys[CDM.lon][eT], lerpRatio),
+            math.lerp(_dataKeys[CDM.lat][sT], _dataKeys[CDM.lat][eT], lerpRatio),
+            math.lerp(_dataKeys[CDM.alt][sT] + _dataKeys[CDM.gs][sT], _dataKeys[CDM.alt][eT] + _dataKeys[CDM.gs][eT], lerpRatio)); // converted to WGS84 altitude
 
         if (CDM.IsValidRotation())
         {
@@ -367,7 +378,7 @@ public class DataProcessor : MonoBehaviour
 
     public Vector3[] GetTravelPathUnitySpaceRelative(CesiumGeoreference referenceGlobe, Vector3 referencePosition)
     {
-        if (!_hasData) return new Vector3[0];
+        if (!_hasData || !CDM.IsValidGPS()) return new Vector3[0];
 
         Vector3[] result = new Vector3[_dataKeys[CDM.lon].Count];
 
@@ -375,7 +386,7 @@ public class DataProcessor : MonoBehaviour
         foreach (int t in _dataKeys[CDM.lon].Keys)
         {
             double3 unityPos = referenceGlobe.TransformEarthCenteredEarthFixedPositionToUnity(
-                CesiumWgs84Ellipsoid.LongitudeLatitudeHeightToEarthCenteredEarthFixed(new double3(_dataKeys[CDM.lon][t], _dataKeys[CDM.lat][t], _dataKeys[CDM.alt][t])));
+                CesiumWgs84Ellipsoid.LongitudeLatitudeHeightToEarthCenteredEarthFixed(new double3(_dataKeys[CDM.lon][t], _dataKeys[CDM.lat][t], _dataKeys[CDM.alt][t] + _dataKeys[CDM.gs].Values.Last())));
 
             result[r] = new Vector3((float) unityPos.x, (float) unityPos.y, (float) unityPos.z) - referencePosition;
             ++r;
@@ -386,36 +397,52 @@ public class DataProcessor : MonoBehaviour
 
     public Vector3 GetLastPositionUnitySpaceRelative(CesiumGeoreference referenceGlobe, Vector3 referencePosition)
     {
-        if (!_hasData) return Vector3.zero;
+        if (!_hasData || !CDM.IsValidGPS()) return Vector3.zero;
 
         double3 unityPos = referenceGlobe.TransformEarthCenteredEarthFixedPositionToUnity(
                 CesiumWgs84Ellipsoid.LongitudeLatitudeHeightToEarthCenteredEarthFixed(
-                    new double3(_dataKeys[CDM.lon].Values.Last(), _dataKeys[CDM.lat].Values.Last(), _dataKeys[CDM.alt].Values.Last())));
+                    new double3(_dataKeys[CDM.lon].Values.Last(), _dataKeys[CDM.lat].Values.Last(), _dataKeys[CDM.alt].Values.Last() + _dataKeys[CDM.gs].Values.Last())));
 
         return new Vector3((float) unityPos.x, (float) unityPos.y, (float) unityPos.z) - referencePosition;
     }
 
-    public double3[] GetTravelPathGeo()
+    /// <summary>
+    /// Gives all location keyframes
+    /// </summary>
+    /// <param name="msl">True to return meters above sea level as altitude (Optional)</param>
+    /// <returns></returns>
+    public double3[] GetTravelPathGeo(bool msl = false)
     {
-        if (!_hasData) return new double3[0];
+        if (!_hasData || !CDM.IsValidGPS(msl)) return new double3[0];
 
         double3[] result = new double3[_dataKeys[CDM.lon].Count];
 
         int r = 0;
         foreach (int t in _dataKeys[CDM.lon].Keys)
         {
-            result[r] = new double3(_dataKeys[CDM.lon][t], _dataKeys[CDM.lat][t], _dataKeys[CDM.alt][t]);
+            if (msl) result[r] = new double3(_dataKeys[CDM.lon][t], _dataKeys[CDM.lat][t], _dataKeys[CDM.alt][t]);
+            else result[r] = new double3(_dataKeys[CDM.lon][t], _dataKeys[CDM.lat][t], _dataKeys[CDM.alt][t] + _dataKeys[CDM.gs][t]); // converted to WGS84 altitude
+
             ++r;
         }
 
         return result;
     }
 
-    public double3 GetLastPositionGeo()
+    /// <summary>
+    /// Gives the last recorded location keyframe
+    /// </summary>
+    /// <param name="msl">True to return meters above sea level as altitude (Optional)</param>
+    /// <returns></returns>
+    public double3 GetLastPositionGeo(bool msl = false)
     {
-        if (!_hasData) return double3.zero;
+        if (!_hasData || !CDM.IsValidGPS(msl)) return double3.zero;
 
-        return new double3(_dataKeys[CDM.lon].Values.Last(), _dataKeys[CDM.lat].Values.Last(), _dataKeys[CDM.alt].Values.Last());
+        if (msl) return new double3(_dataKeys[CDM.lon].Values.Last(), _dataKeys[CDM.lat].Values.Last(), _dataKeys[CDM.alt].Values.Last());
+        
+        return new double3(_dataKeys[CDM.lon].Values.Last(),
+            _dataKeys[CDM.lat].Values.Last(), 
+            _dataKeys[CDM.alt].Values.Last() + _dataKeys[CDM.gs].Values.Last()); // converted to WGS84 altitude
     }
 
     /// <summary>

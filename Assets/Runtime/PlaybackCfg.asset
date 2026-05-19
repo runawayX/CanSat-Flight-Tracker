@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlaybackConfiguration
   _state: 2
   _fastMultiplier: 2
-  _currentTime_ms: 0
-  _duration_ms: 0
+  _currentTime_ms: 998
+  _duration_ms: 44646
+  _liveSeekTime: 1
   _smallStep_ms: 50
-  _formattedPlaybackTime: 0:00/0:00
+  _formattedPlaybackTime: 0:00:00.99/0:00:44

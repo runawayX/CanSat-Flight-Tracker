@@ -60,6 +60,8 @@ public class PlaybackManager : MonoBehaviour
     private int _lastTime = 0;
     private int _lastDuration = 0;
 
+    private int _liveSeek = 0;
+
     private void Awake()
     {
         _actionPlaybackToggle = _playbackToggle.action;
@@ -125,17 +127,20 @@ public class PlaybackManager : MonoBehaviour
     {
         switch (_playback._state)
         {
+            case PlaybackConfiguration.PlaybackState.Live:
+                _playback._currentTime_ms = Math.Min(_playback._duration_ms, _playback._currentTime_ms + (int) Math.Ceiling(Time.deltaTime * _liveSeek));
+                break;
             case PlaybackConfiguration.PlaybackState.Forward:
-                _playback._currentTime_ms = Math.Min(_playback._duration_ms, _playback._currentTime_ms + (int) (Time.deltaTime * 1000));
+                _playback._currentTime_ms = Math.Min(_playback._duration_ms, _playback._currentTime_ms + (int) Math.Ceiling(Time.deltaTime * 1000));
                 break;
             case PlaybackConfiguration.PlaybackState.FastForward:
-                _playback._currentTime_ms = Math.Min(_playback._duration_ms, _playback._currentTime_ms + (int) (Time.deltaTime * _playback._fastMultiplier * 1000));
+                _playback._currentTime_ms = Math.Min(_playback._duration_ms, _playback._currentTime_ms + (int) Math.Ceiling(Time.deltaTime * _playback._fastMultiplier * 1000));
                 break;
             case PlaybackConfiguration.PlaybackState.Rewind:
-                _playback._currentTime_ms = Math.Max(0, _playback._currentTime_ms - (int) (Time.deltaTime * 1000));
+                _playback._currentTime_ms = Math.Max(0, _playback._currentTime_ms - (int) Math.Ceiling(Time.deltaTime * 1000));
                 break;
             case PlaybackConfiguration.PlaybackState.FastRewind:
-                _playback._currentTime_ms = Math.Max(0, _playback._currentTime_ms - (int) (Time.deltaTime * _playback._fastMultiplier * 1000));
+                _playback._currentTime_ms = Math.Max(0, _playback._currentTime_ms - (int) Math.Ceiling(Time.deltaTime * _playback._fastMultiplier * 1000));
                 break;
             default:
                 break;
@@ -155,6 +160,7 @@ public class PlaybackManager : MonoBehaviour
     public void OnKeyAdded(bool incremental)
     {
         _playback._duration_ms = _env.TotalTime();
+        _liveSeek = (int) Math.Ceiling(_playback._duration_ms / _playback._liveSeekTime);
     }
 
     public void TogglePlayback(InputAction.CallbackContext c)

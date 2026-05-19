@@ -17,6 +17,7 @@
                 <ui:Button text="||" name="Stop" style="aspect-ratio: 1; height: 100%; margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; align-self: center;"/>
                 <ui:Button text="&gt;" name="Forward" style="aspect-ratio: 1; height: 100%; margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; align-self: center;"/>
                 <ui:Button text="&gt;&gt;" name="FastForward" style="aspect-ratio: 1; height: 100%; width: auto; margin-right: 0; margin-top: 0; margin-bottom: 0; margin-left: 0; align-self: center;"/>
+                <ui:Button text="Live" name="Live" style="aspect-ratio: 1; height: 100%; width: auto; margin-right: 0; margin-top: 0; margin-bottom: 0; margin-left: 0; align-self: center;"/>
             </ui:ToggleButtonGroup>
             <ui:Button text="&gt;|" focusable="false" name="SnapToFront"/>
             <ui:IntegerField label="Fast Speed" value="2" name="PlaySpeed" max-length="3" placeholder-text="2" keyboard-type="Default" tooltip="Speed Multiplier" focusable="false" style="aspect-ratio: auto; right: auto; width: auto; height: 80%; margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; -unity-text-align: middle-center;">

@@ -264,7 +264,7 @@ public class RootGUIBehavior : MonoBehaviour
     #region External Actions
     public void PlaybackValueChange(ToggleButtonGroupState state)
     {
-        if (state.length != 5)
+        if (state.length != 6)
         {
             Debug.LogError("Invalid Playback State provided.");
             return;

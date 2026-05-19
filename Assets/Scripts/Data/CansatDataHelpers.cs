@@ -26,10 +26,17 @@ public readonly struct GeoTransform
 /// </summary>
 public struct CDM
 {
-    public static readonly int Mapped = 7; //
+    /// <summary>
+    /// Number of quick mapped categories
+    /// </summary>
+    public static readonly int Mapped = 7;
 
     public static int t = -1;
     public static int lat = -1, lon = -1, alt = -1;
+    /// <summary>
+    /// Globe Separation (WGS84 conversion)
+    /// </summary>
+    public static int gs = -1;
     public static int hdg = -1, pitch = -1, roll = -1;
 
     public static void Remap(string key, int index)
@@ -40,6 +47,7 @@ public struct CDM
             case "lat": lat = index; break;
             case "lon": lon = index; break;
             case "alt": alt = index; break;
+            case "gs": gs = index; break;
             case "hdg": hdg = index; break;
             case "pitch": pitch = index; break;
             case "roll": roll = index; break;
@@ -50,17 +58,18 @@ public struct CDM
     {
         t = -1;
         lat = -1; lon = -1; alt = -1;
+        gs = -1;
         hdg = -1; pitch = -1; roll = -1;
     }
 
-    public static bool IsValid()
+    public static bool IsValid(bool msl = false)
     {
-        return t != -1 && lat != -1 && lon != -1 && alt != -1 && hdg != -1 && pitch != -1 && roll != -1;
+        return t != -1 && lat != -1 && lon != -1 && alt != -1 && (!msl || gs != -1) && hdg != -1 && pitch != -1 && roll != -1;
     }
 
-    public static bool IsValidGPS()
+    public static bool IsValidGPS(bool msl = false)
     {
-        return t != -1 && lat != -1 && lon != -1 && alt != -1;
+        return t != -1 && lat != -1 && lon != -1 && alt != -1 && (!msl || gs != -1);
     }
 
     public static bool IsValidRotation()
