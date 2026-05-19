@@ -127,7 +127,7 @@ public class RootGUIBehavior : MonoBehaviour
 
     private void Update()
     {
-        if (_visualizationConfig._highlightedNode != null && !_visualizationConfig._highlightedNodeLock) _visualizationConfig._highlightInfoPosition = _actionMousePosition.ReadValue<Vector2>();
+        if (_visualizationConfig._highlightedNode != null && !_visualizationConfig._highlightedNodeLock) _visualizationConfig._highlightInfoPosition = RuntimePanelUtils.ScreenToPanel(_ui.rootVisualElement.panel, _actionMousePosition.ReadValue<Vector2>());
 
         _worldHoverInfo.visible = _visualizationConfig._highlightedNode != null;
         _worldHoverInfo.enabledSelf = _visualizationConfig._highlightedNode != null;

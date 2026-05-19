@@ -136,15 +136,15 @@
                 <ui:DataBinding property="text" data-source-path="_highlightedNodeEvaluated" data-source="project://database/Assets/Runtime/VisualCfg.asset?fileID=11400000&amp;guid=d7d39dac5d255c045b10817776f681a7&amp;type=2#VisualCfg" binding-mode="ToTarget"/>
             </Bindings>
         </ui:Label>
-        <Bindings>
-            <ui:DataBinding property="style.left" data-source-path="_highlightInfoPosition.x" data-source="project://database/Assets/Runtime/VisualCfg.asset?fileID=11400000&amp;guid=d7d39dac5d255c045b10817776f681a7&amp;type=2#VisualCfg" binding-mode="ToTarget"/>
-            <ui:DataBinding property="style.bottom" data-source-path="_highlightInfoPosition.y" data-source="project://database/Assets/Runtime/VisualCfg.asset?fileID=11400000&amp;guid=d7d39dac5d255c045b10817776f681a7&amp;type=2#VisualCfg" binding-mode="ToTarget"/>
-        </Bindings>
         <ui:DropdownField label="" name="WorldHoverCategory" index="0">
             <Bindings>
                 <ui:DataBinding property="choices" data-source-path="_measureCategories" data-source="project://database/Assets/Runtime/VisualCfg.asset?fileID=11400000&amp;guid=d7d39dac5d255c045b10817776f681a7&amp;type=2#VisualCfg" binding-mode="ToTarget"/>
                 <ui:DataBinding property="index" data-source-path="_activeMeasureCategory" data-source="project://database/Assets/Runtime/VisualCfg.asset?fileID=11400000&amp;guid=d7d39dac5d255c045b10817776f681a7&amp;type=2#VisualCfg" binding-mode="TwoWay"/>
             </Bindings>
         </ui:DropdownField>
+        <Bindings>
+            <ui:DataBinding property="style.bottom" data-source-path="_highlightInfoPosition.y" data-source="project://database/Assets/Runtime/VisualCfg.asset?fileID=11400000&amp;guid=d7d39dac5d255c045b10817776f681a7&amp;type=2#VisualCfg" binding-mode="ToTarget"/>
+            <ui:DataBinding property="style.left" data-source-path="_highlightInfoPosition.x" data-source="project://database/Assets/Runtime/VisualCfg.asset?fileID=11400000&amp;guid=d7d39dac5d255c045b10817776f681a7&amp;type=2#VisualCfg" binding-mode="ToTarget"/>
+        </Bindings>
     </ui:VisualElement>
 </ui:UXML>
